@@ -1,0 +1,57 @@
+.subContainer {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.videoBoxWrapper {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  gap: 10px;
+  background-color: lightblue;
+  border: 2px solid orange;
+}
+
+.videoBoxWrapper:hover .title {
+  color: rgb(255, 255, 255);
+  transition-duration: 0.45s;
+}
+
+.videoBox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  background: rgba(232, 232, 232, 0.5);
+}
+
+.videoBox video {
+  width: 100%;
+  height: 15rem;
+  object-fit: cover;
+  background-position: center;
+}
+
+.title {
+  background-color: #000000;
+  font-size: 12px;
+  color: gray;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  margin: 0;
+}
+
+.videoLink {
+  width: 100%;
+  background-color: lightseagreen;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

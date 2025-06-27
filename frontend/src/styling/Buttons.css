@@ -1,0 +1,19 @@
+.loadMoreBtn {
+  background: none;
+  border: none;
+  outline: none;
+  color: white;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: text-underline-offset 0.3s ease;
+}
+
+.loadMoreBtn:hover {
+  text-underline-offset: 10px;
+}

@@ -1,0 +1,298 @@
+:root {
+  --secondary_color: #E1031F;
+  --progress_grey: #404040;
+  --preview_color:rgba(0, 0, 0, 0.5);
+  background-color: black;
+  font-size: 14px;
+}
+.container-wrapper{
+  /* background-color: rgb(88, 46, 192); */
+  width: 95vw;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  background-color: lightcoral;
+}
+.current-video{
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  background-color: lightcyan;
+  gap: .5rem;
+}
+
+.custom-player {
+  position: relative;
+  background-color: #151515;
+  width: 90vw;
+  max-width: 960px;      /* static width */
+  height: 540px;         /* static height */
+  margin: 0 auto;
+  padding: 0 10px;        /* center player */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+video{
+  border: qpx solid white;
+}
+.bigBtn{
+  height: 100px;
+  width: 100px;
+  background-color: lightblue;
+  position: absolute;
+  display: none;
+}
+.custom-player video {
+  width: 100%;
+  height: 100%;
+  /* object-fit: cover;    */
+  background: black;
+}
+
+.controls {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 0 10px;
+  box-sizing: border-box;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  color: white;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+.custom-player:hover .controls {
+  transform: translate(0);
+}
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.controls-row button{
+  margin: 0 10px;
+}
+.volume-control, .volume-control button{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.volume-control{
+  gap: 0px;
+}
+
+.controls-row button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+.leftControllers{
+  position: relative;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.rightControllers{
+  position: relative;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+/* === COMMON RANGE BASE === */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: transparent;
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  width: 100%;
+  background-image: linear-gradient(
+    to right,
+    var(--secondary_color) 0%,
+    var(--secondary_color) var(--played-percent, 0%),
+    var(--progress_grey) var(--played-percent, 0%),
+    var(--progress_grey) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  border: none;
+}
+
+/* === THUMB SHARED === */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  background: white;
+  position: relative;
+  z-index: 2;
+  /* margin-top: -2px; */
+}
+
+input[type="range"]::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+}
+
+/* Firefox Track & Fill */
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--progress_grey);
+  border-radius: 5px;
+}
+
+input[type="range"]::-moz-range-progress {
+  background-color: var(--secondary_color);
+  height: 4px;
+  border-radius: 5px;
+}
+
+
+/* === VOLUME BAR === */
+input.volumeBar {
+  width: 0;
+  visibility: hidden;
+  background: transparent;
+  background-image: linear-gradient(
+    to right,
+    var(--secondary_color) 0%,
+    var(--secondary_color) var(--volume-percent, 100%),
+    var(--progress_grey) var(--volume-percent, 100%),
+    var(--progress_grey) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  height: 4px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition-duration: 0.5s;
+}
+.volumeBtn:hover~input.volumeBar, input.volumeBar:hover{
+  width: 80px;
+  visibility: visible;
+}
+
+input.volumeBar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  background: white;
+  position: relative;
+  z-index: 2;
+  /* margin-top: -2px; */
+}
+
+input.volumeBar::-moz-range-thumb {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+}
+
+input.volumeBar::-moz-range-track {
+  background: var(--progress_grey);
+  height: 4px;
+  border-radius: 5px;
+}
+
+input.volumeBar::-moz-range-progress {
+  background-color: var(--secondary_color);
+  height: 4px;
+  border-radius: 5px;
+}
+
+/* === PROGRESS BAR === */
+input.progressBar {
+  width: 100%;
+}
+
+
+/* action buttons */
+.actionsRow{
+  background-color: lightseagreen;
+}
+
+/* Hover time preview with arrow */
+.hover-preview {
+  position: absolute;
+  bottom: 5em;
+  transform: translateX(-25%);
+  background: var(--preview_color);
+  color: white;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  display: none;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+}
+
+/* Arrow head triangle */
+.hover-preview::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--preview_color) transparent transparent transparent;
+}
+
+.volume-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 50%;
+  height: 4em;
+  width: 4em;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* preview pannel */
+.nextPreviews{
+  /* background-color: lightpink; */
+  display: flex;
+  flex-direction: column;
+}
+.videoBoxWrapper{
+  gap: 0;
+  display: grid;
+  grid-column: 1fr 1fr 1fr;
+}
+.nextPreviews .title{
+  display: none;
+}
