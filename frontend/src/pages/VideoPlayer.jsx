@@ -40,7 +40,7 @@ const VideoPlayer = () => {
   const [randomNext, setRandomNext] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/files?limit=3")
+    fetch("http://localhost:3000/files?limit=8")
       .then(res => res.json())
       .then(data => {
         const filtered = data.files.filter(f => f !== fileName);
@@ -63,9 +63,24 @@ const VideoPlayer = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleKeyDown = (e) => {
-      if (e.repeat) return;
+    let intervalId = null;
 
+    const startSkipping = (direction) => {
+      intervalId = setInterval(() => {
+        if (direction === 'forward') {
+          video.currentTime = Math.min(video.currentTime + 5, video.duration);
+        } else if (direction === 'backward') {
+          video.currentTime = Math.max(video.currentTime - 5, 0);
+        }
+      }, 100);
+    };
+
+    const stopSkipping = () => {
+      clearInterval(intervalId);
+      intervalId = null;
+    };
+
+    const handleKeyDown = (e) => {
       switch (e.code) {
         case 'Space':
           e.preventDefault();
@@ -73,11 +88,11 @@ const VideoPlayer = () => {
           break;
         case 'ArrowRight':
           e.preventDefault();
-          video.currentTime = Math.min(video.currentTime + 5, video.duration);
+          if (!intervalId) startSkipping('forward');
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          video.currentTime = Math.max(video.currentTime - 5, 0);
+          if (!intervalId) startSkipping('backward');
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -101,8 +116,20 @@ const VideoPlayer = () => {
       }
     };
 
+    const handleKeyUp = (e) => {
+      if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
+        stopSkipping();
+      }
+    };
+
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+      stopSkipping();
+    };
   }, []);
 
   useEffect(() => {
@@ -255,85 +282,82 @@ const VideoPlayer = () => {
 
   return (
     <div className='container-wrapper'>
-
       <div className="current-video">
+        <div className="custom-player" ref={containerRef} onClick={togglePlay}>
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            autoPlay
+            onLoadedMetadata={handleLoadedMetadata}
+            onTimeUpdate={handleTimeUpdate}
+            style={{ background: 'black' }}
+          />
 
-             <div className="custom-player" ref={containerRef} onClick={togglePlay}>
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          autoPlay
-          onLoadedMetadata={handleLoadedMetadata}
-          onTimeUpdate={handleTimeUpdate}
-          style={{ background: 'black' }}
-        />
+          {volumeDisplay && (
+            <div className="volume-indicator">{volumePercent}%</div>
+          )}
 
-        {volumeDisplay && (
-          <div className="volume-indicator">{volumePercent}%</div>
-        )}
-
-        <div className={`controls ${showControls ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
-          <div className="progress-bar">
-            <input
-              ref={progressRef}
-              type="range"
-              min="0"
-              max="100"
-              defaultValue="0"
-              onChange={handleSeek}
-              className="progressBar"
-              onMouseMove={handleHoverPreview}
-              onMouseLeave={hideHoverPreview}
-            />
-            <div className="hover-preview" ref={hoverPreviewRef}>
-              <span ref={previewTimeRef}></span>
-            </div>
-          </div>
-
-          <div className="controls-row">
-            <div className="leftControllers">
-              <button onClick={togglePlay}>
-                {ended ? <FaUndo /> : (playing ? <FaPause /> : <FaPlay />)}
-              </button>
-              <div className="volume-control">
-                <button onClick={toggleMute} className="volumeBtn">
-                  {muted || volume === 0 ? <FaVolumeMute /> : <FaVolumeUp />}
-                </button>
-                <input
-                  ref={volumeRef}
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={volume}
-                  onChange={handleVolumeChange}
-                  className="volumeBar"
-                />
+          <div className={`controls ${showControls ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
+            <div className="progress-bar">
+              <input
+                ref={progressRef}
+                type="range"
+                min="0"
+                max="100"
+                defaultValue="0"
+                onChange={handleSeek}
+                className="progressBar"
+                onMouseMove={handleHoverPreview}
+                onMouseLeave={hideHoverPreview}
+              />
+              <div className="hover-preview" ref={hoverPreviewRef}>
+                <span ref={previewTimeRef}></span>
               </div>
             </div>
 
-            <div className="rightControllers">
-              <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-              <button onClick={toggleFullscreen} className="screenBtn">
-                {fullscreen ? <FaCompress /> : <FaExpand />}
-              </button>
+            <div className="controls-row">
+              <div className="leftControllers">
+                <button onClick={togglePlay}>
+                  {ended ? <FaUndo /> : (playing ? <FaPause /> : <FaPlay />)}
+                </button>
+                <div className="volume-control">
+                  <button onClick={toggleMute} className="volumeBtn">
+                    {muted || volume === 0 ? <FaVolumeMute /> : <FaVolumeUp />}
+                  </button>
+                  <input
+                    ref={volumeRef}
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volume}
+                    onChange={handleVolumeChange}
+                    className="volumeBar"
+                  />
+                </div>
+              </div>
+
+              <div className="rightControllers">
+                <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+                <button onClick={toggleFullscreen} className="screenBtn">
+                  {fullscreen ? <FaCompress /> : <FaExpand />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* bottom buttons - likes and stuff */}
         <div className="actionsRow">
           hello
         </div>
       </div>
 
       {randomNext.length > 0 && (
-          <div className="nextPreviews">
-            {randomNext.map((file, idx) => (
-              <VideoPreview key={idx} file={file} />
-            ))}
-          </div>
+        <div className="nextPreviews">
+          {randomNext.map((file, idx) => (
+            <VideoPreview key={idx} file={file} />
+          ))}
+        </div>
       )}
     </div>
   );

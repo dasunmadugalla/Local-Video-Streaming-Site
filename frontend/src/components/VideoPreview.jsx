@@ -74,15 +74,7 @@ const VideoPreview = forwardRef(({ file }, ref) => {
           />
         </Link>
       </div>
-      <p className='title'
-        style={{
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          wordBreak: 'break-word',
-        }}
-      >
+      <p className='title'>
         {file}
       </p>
     </div>

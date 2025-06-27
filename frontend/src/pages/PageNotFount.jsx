@@ -4,7 +4,7 @@ import '../styling/PageNotFound.css'
 
 function PageNotFount() {
   return (
-    <div className='mainContainer'>
+    <div className='notFoundContainer'>
       <img src={pageNotFoundImg} alt="Page Not Found" className='notfoundImg' />
     </div>
   )
