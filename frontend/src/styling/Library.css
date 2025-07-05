@@ -1,0 +1,89 @@
+.header{
+    /* background-color: lightblue; */
+    width: 95vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.search{
+  background: rgb(16, 16, 16);
+  border: 1px solid rgb(58, 58, 58);
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
+  outline: none;
+  color: white;
+  cursor: pointer;
+}
+.searchBar{
+    background: none;
+    border: none;
+    outline: none;
+    width: 20vw;
+    color: white;
+}
+.submitBtn{
+    background: none;
+    border: none;
+    outline: none;
+    color: white;
+    cursor: pointer;
+}
+.sortWrapper{
+    display: flex;
+    gap: 10px;
+}
+/* .sortBtn, .formatBtn{
+    text-align: center;
+}
+option{
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+} */
+
+.videoContainer {
+    width: 95vw;
+    margin: 20px auto;
+    border-collapse: collapse;
+    color: white;
+    font-size: 12px;
+    background: rgb(24, 24, 24);
+    border: 1px solid rgb(58, 58, 58);
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+.fileTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.fileTable th, .fileTable td {
+    border: 1px solid rgb(58, 58, 58);
+    padding: 10px 10px;
+    text-align: left;
+}
+
+.fileTable th {
+    background: rgb(36, 36, 36);
+    font-weight: bold;
+}
+
+.fileTable tr:nth-child(even) {
+    background: rgb(30, 30, 30);
+}
+
+.fileTable tr:hover {
+    background: rgb(50, 50, 50);
+    cursor: default;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}

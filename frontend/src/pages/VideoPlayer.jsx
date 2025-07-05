@@ -1,17 +1,16 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  FaPlay, FaPause, FaExpand, FaCompress, FaVolumeUp, FaVolumeMute, FaUndo
-} from 'react-icons/fa';
-import { FileContext } from '../components/FileContext';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { FaUndo } from 'react-icons/fa';
 import VideoPreview from '../components/VideoPreview';
+import PlayerControls from '../components/PlayerControls';
+import ProgressBar from '../components/ProgressBar';
+import NextPreviews from '../components/NextPreviews';
 import '../styling/VideoPlayer.css';
 
 const VideoPlayer = () => {
   const { fileName } = useParams();
+  const navigate = useNavigate();
   const videoSrc = `http://localhost:3000/videos/${encodeURIComponent(fileName)}`;
-
-  const { visibleFiles } = useContext(FileContext);
 
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -23,38 +22,38 @@ const VideoPlayer = () => {
   const [playing, setPlaying] = useState(true);
   const [ended, setEnded] = useState(false);
   const [volume, setVolume] = useState(() => {
-    const savedVolume = localStorage.getItem('globalVolume');
-    return savedVolume !== null ? parseFloat(savedVolume) : 1;
+    const saved = localStorage.getItem('globalVolume');
+    return saved ? parseFloat(saved) : 1;
   });
   const [muted, setMuted] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
-  const [showControls] = useState(true);
   const [volumeDisplay, setVolumeDisplay] = useState(false);
   const [volumePercent, setVolumePercent] = useState(() => {
-    const savedVolume = localStorage.getItem('globalVolume');
-    return savedVolume !== null ? Math.round(parseFloat(savedVolume) * 100) : 100;
+    const saved = localStorage.getItem('globalVolume');
+    return saved ? Math.round(parseFloat(saved) * 100) : 100;
   });
-
   const [randomNext, setRandomNext] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/files?limit=8")
+    fetch(videoSrc, { method: 'HEAD' })
+      .then(res => { if (!res.ok) navigate('/'); })
+      .catch(() => navigate('/'));
+  }, [fileName]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/random?limit=8")
       .then(res => res.json())
-      .then(data => {
-        const filtered = data.files.filter(f => f !== fileName);
-        setRandomNext(filtered);
-      });
+      .then(data => setRandomNext(data.filter(f => f !== fileName)));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [fileName]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (video) {
       video.volume = volume;
-      if (volumeRef.current) {
-        volumeRef.current.style.setProperty('--volume-percent', `${volume * 100}%`);
-      }
+      volumeRef.current?.style.setProperty('--volume-percent', `${volume * 100}%`);
       localStorage.setItem('globalVolume', volume);
     }
   }, [volume]);
@@ -63,22 +62,30 @@ const VideoPlayer = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    let intervalId = null;
-
-    const startSkipping = (direction) => {
-      intervalId = setInterval(() => {
-        if (direction === 'forward') {
-          video.currentTime = Math.min(video.currentTime + 5, video.duration);
-        } else if (direction === 'backward') {
-          video.currentTime = Math.max(video.currentTime - 5, 0);
-        }
-      }, 100);
+    const handleWheel = (e) => {
+      const rect = video.getBoundingClientRect();
+      if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        e.preventDefault();
+        Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? changeVolume(e.deltaY < 0 ? 0.01 : -0.01) :
+          video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + e.deltaX * 0.05));
+      }
     };
 
-    const stopSkipping = () => {
-      clearInterval(intervalId);
-      intervalId = null;
+    const handleEnded = () => { setPlaying(false); setEnded(true); };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    video.addEventListener('ended', handleEnded);
+    video.play().catch(() => setPlaying(false));
+
+    return () => {
+      window.removeEventListener('wheel', handleWheel);
+      video.removeEventListener('ended', handleEnded);
     };
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
 
     const handleKeyDown = (e) => {
       switch (e.code) {
@@ -88,19 +95,22 @@ const VideoPlayer = () => {
           break;
         case 'ArrowRight':
           e.preventDefault();
-          if (!intervalId) startSkipping('forward');
+          video.currentTime = Math.min(video.currentTime + 10, video.duration);
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          if (!intervalId) startSkipping('backward');
+          video.currentTime = Math.max(video.currentTime - 10, 0);
           break;
         case 'ArrowUp':
           e.preventDefault();
-          changeVolume(0.1);
+          changeVolume(0.05);
           break;
         case 'ArrowDown':
           e.preventDefault();
-          changeVolume(-0.1);
+          changeVolume(-0.05);
+          break;
+        case 'KeyM':
+          toggleMute();
           break;
         case 'KeyF':
           toggleFullscreen();
@@ -116,168 +126,37 @@ const VideoPlayer = () => {
       }
     };
 
-    const handleKeyUp = (e) => {
-      if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
-        stopSkipping();
-      }
-    };
-
     document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-      stopSkipping();
-    };
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleWheel = (e) => {
-      const rect = video.getBoundingClientRect();
-      const withinX = e.clientX >= rect.left && e.clientX <= rect.right;
-      const withinY = e.clientY >= rect.top && e.clientY <= rect.bottom;
-
-      if (withinX && withinY) {
-        e.preventDefault();
-
-        const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-        const vertical = Math.abs(e.deltaY) >= Math.abs(e.deltaX);
-
-        if (vertical) {
-          changeVolume(e.deltaY < 0 ? 0.01 : -0.01);
-        } else if (horizontal) {
-          const seekStep = 0.05;
-          video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + e.deltaX * seekStep));
-        }
-      }
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.addEventListener('ended', () => {
-      setPlaying(false);
-      setEnded(true);
-    });
-    return () => video.removeEventListener('ended', () => {});
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      video.play().catch(() => setPlaying(false));
-    }
-  }, []);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [muted, fullscreen, ended]);
 
   const changeVolume = (delta) => {
-    setVolume((prev) => {
-      const newVolume = Math.min(1, Math.max(0, prev + delta));
-      setVolumePercent(Math.round(newVolume * 100));
+    setVolume(prev => {
+      const newVol = Math.min(1, Math.max(0, prev + delta));
+      setVolumePercent(Math.round(newVol * 100));
       setVolumeDisplay(true);
       clearTimeout(window.hideTimeout);
       window.hideTimeout = setTimeout(() => setVolumeDisplay(false), 1000);
-      return newVolume;
+      return newVol;
     });
   };
 
   const togglePlay = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (ended) {
-      video.currentTime = 0;
-      video.play();
-      setPlaying(true);
-      setEnded(false);
-    } else if (video.paused) {
-      video.play();
-      setPlaying(true);
-    } else {
-      video.pause();
-      setPlaying(false);
-    }
+    const v = videoRef.current;
+    if (ended) { v.currentTime = 0; v.play(); setPlaying(true); setEnded(false); }
+    else if (v.paused) { v.play(); setPlaying(true); }
+    else { v.pause(); setPlaying(false); }
   };
 
   const toggleMute = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = !video.muted;
-    setMuted(video.muted);
-  };
-
-  const handleTimeUpdate = () => {
-    const video = videoRef.current;
-    const percent = (video.currentTime / video.duration) * 100;
-    setCurrentTime(video.currentTime);
-    if (progressRef.current) {
-      progressRef.current.value = percent;
-      progressRef.current.style.setProperty('--played-percent', `${percent}%`);
-    }
-  };
-
-  const handleSeek = (e) => {
-    const video = videoRef.current;
-    const percent = e.target.value;
-    video.currentTime = (percent / 100) * duration;
-    progressRef.current.style.setProperty('--played-percent', `${percent}%`);
-  };
-
-  const handleLoadedMetadata = () => {
-    const video = videoRef.current;
-    setDuration(video.duration);
-  };
-
-  const formatTime = (time) => {
-    const hours = Math.floor(time / 3600);
-    const minutes = Math.floor((time % 3600) / 60).toString().padStart(2, '0');
-    const seconds = Math.floor(time % 60).toString().padStart(2, '0');
-    return hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+    videoRef.current.muted = !muted;
+    setMuted(videoRef.current.muted);
   };
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen();
-      setFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setFullscreen(false);
-    }
-  };
-
-  const handleVolumeChange = (e) => {
-    const vol = parseFloat(e.target.value);
-    setVolume(vol);
-    setVolumePercent(Math.round(vol * 100));
-    if (volumeRef.current) {
-      volumeRef.current.style.setProperty('--volume-percent', `${vol * 100}%`);
-    }
-  };
-
-  const handleHoverPreview = (e) => {
-    const rect = progressRef.current.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    const time = percent * duration;
-    if (time < 0 || time > duration) return;
-
-    clearTimeout(window.hideTimeout);
-    previewTimeRef.current.textContent = formatTime(time);
-    hoverPreviewRef.current.style.display = 'block';
-    hoverPreviewRef.current.style.left = `${e.clientX - rect.left}px`;
-  };
-
-  const hideHoverPreview = () => {
-    if (hoverPreviewRef.current) {
-      window.hideTimeout = setTimeout(() => {
-        hoverPreviewRef.current.style.display = 'none';
-      }, 50);
-    }
+    if (!document.fullscreenElement) containerRef.current?.requestFullscreen();
+    else document.exitFullscreen();
+    setFullscreen(!fullscreen);
   };
 
   return (
@@ -288,77 +167,53 @@ const VideoPlayer = () => {
             ref={videoRef}
             src={videoSrc}
             autoPlay
-            onLoadedMetadata={handleLoadedMetadata}
-            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+            onTimeUpdate={() => {
+              const v = videoRef.current;
+              setCurrentTime(v.currentTime);
+              const percent = (v.currentTime / v.duration) * 100;
+              progressRef.current.value = percent;
+              progressRef.current.style.setProperty('--played-percent', `${percent}%`);
+            }}
             style={{ background: 'black' }}
           />
 
-          {volumeDisplay && (
-            <div className="volume-indicator">{volumePercent}%</div>
-          )}
+          {volumeDisplay && <div className="volume-indicator">{volumePercent}%</div>}
 
-          <div className={`controls ${showControls ? '' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
-            <div className="progress-bar">
-              <input
-                ref={progressRef}
-                type="range"
-                min="0"
-                max="100"
-                defaultValue="0"
-                onChange={handleSeek}
-                className="progressBar"
-                onMouseMove={handleHoverPreview}
-                onMouseLeave={hideHoverPreview}
-              />
-              <div className="hover-preview" ref={hoverPreviewRef}>
-                <span ref={previewTimeRef}></span>
-              </div>
-            </div>
-
-            <div className="controls-row">
-              <div className="leftControllers">
-                <button onClick={togglePlay}>
-                  {ended ? <FaUndo /> : (playing ? <FaPause /> : <FaPlay />)}
-                </button>
-                <div className="volume-control">
-                  <button onClick={toggleMute} className="volumeBtn">
-                    {muted || volume === 0 ? <FaVolumeMute /> : <FaVolumeUp />}
-                  </button>
-                  <input
-                    ref={volumeRef}
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volume}
-                    onChange={handleVolumeChange}
-                    className="volumeBar"
-                  />
-                </div>
-              </div>
-
-              <div className="rightControllers">
-                <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-                <button onClick={toggleFullscreen} className="screenBtn">
-                  {fullscreen ? <FaCompress /> : <FaExpand />}
-                </button>
-              </div>
-            </div>
+          <div className="controls" onClick={(e) => e.stopPropagation()}>
+            <ProgressBar
+              duration={duration}
+              currentTime={currentTime}
+              progressRef={progressRef}
+              hoverPreviewRef={hoverPreviewRef}
+              previewTimeRef={previewTimeRef}
+              videoRef={videoRef}
+            />
+            <PlayerControls
+              playing={playing}
+              ended={ended}
+              muted={muted}
+              fullscreen={fullscreen}
+              currentTime={currentTime}
+              duration={duration}
+              volume={volume}
+              videoRef={videoRef}
+              volumeRef={volumeRef}
+              setPlaying={setPlaying}
+              setMuted={setMuted}
+              setFullscreen={setFullscreen}
+              setVolume={setVolume}
+              setVolumePercent={setVolumePercent}
+              setEnded={setEnded}
+              containerRef={containerRef}
+              changeVolume={changeVolume}
+            />
           </div>
         </div>
-
-        <div className="actionsRow">
-          hello
-        </div>
+        <div className="actionsRow">hello</div>
       </div>
 
-      {randomNext.length > 0 && (
-        <div className="nextPreviews">
-          {randomNext.map((file, idx) => (
-            <VideoPreview key={idx} file={file} />
-          ))}
-        </div>
-      )}
+      {randomNext.length > 0 && <NextPreviews randomNext={randomNext} />}
     </div>
   );
 };

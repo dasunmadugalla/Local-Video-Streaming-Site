@@ -1,19 +1,43 @@
-.loadMoreBtn {
-  background: none;
-  border: none;
+.btn {
+  background: rgb(16, 16, 16);
+  border: 1px solid rgb(58, 58, 58);
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
   outline: none;
   color: white;
   cursor: pointer;
+  text-align: center;
+  font-weight: lighter;
+  transition:background-color .3s ease;
+  /* text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: text-underline-offset 0.3s ease; */
+}
+.btnWrapper{
   display: inline-flex;
   justify-content: center;
   align-items: center;
   gap: 5px;
-  text-align: center;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  transition: text-underline-offset 0.3s ease;
+}
+.btn:hover {
+  /* text-underline-offset: 10px; */
+  background-color: rgb(42, 42, 42);
 }
 
-.loadMoreBtn:hover {
-  text-underline-offset: 10px;
+.btn.activePage {
+  background-color: #333;
+  color: white;
+  font-weight: bold;
+}
+.subContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

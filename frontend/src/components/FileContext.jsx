@@ -7,11 +7,15 @@ export const FileProvider = ({ children }) => {
   const [visibleFiles, setVisibleFiles] = useState([]);
   const [hasFetched, setHasFetched] = useState(false);
 
+  // ✅ New: Global cache for reshuffled list
+  const [shuffledCache, setShuffledCache] = useState([]);
+
   return (
     <FileContext.Provider value={{
       allCount, setAllCount,
       visibleFiles, setVisibleFiles,
-      hasFetched, setHasFetched
+      hasFetched, setHasFetched,
+      shuffledCache, setShuffledCache
     }}>
       {children}
     </FileContext.Provider>
