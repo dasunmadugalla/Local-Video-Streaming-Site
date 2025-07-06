@@ -9,6 +9,8 @@ const app = express();
 const port = 3000;
 
 app.use(cors());
+app.use(express.json());
+
 //const videoDirectory = "C:\\Users\\dasun\\Downloads\\collection";
 //const videoDirectory = "C:\\Users\\dasun\\Downloads";
 //const videoDirectory = "L:\\program";
@@ -17,6 +19,7 @@ const videoDirectory = "L:\\ivy tega\\New folder";
 
 app.use('/videos', express.static(videoDirectory));
 app.use('/api', primaryDB_handler);
+
 
 let shuffledCache = []; // Cache shuffled list
 
@@ -119,8 +122,11 @@ app.get('/libraryfiles', (req, res) => {
 
     const paginated = detailedList.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
+    const totalSize = detailedList.reduce((sum, file) => sum + file.size, 0);
+
     res.json({
       total: detailedList.length,
+      totalSize,
       files: paginated
     });
   });

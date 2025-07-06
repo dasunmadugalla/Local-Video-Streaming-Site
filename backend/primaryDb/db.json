@@ -1,23 +1,13 @@
 {
-  "movies": [
-    {
-      "title": "mission impossible",
-      "tags": [],
-      "cast": [],
-      "isLiked": 1
-    },
-    {
-      "title": "mission",
-      "tags": [],
-      "cast": [],
-      "isLiked": 1
-    }
-  ],
-  "tags": {
-    "action": [],
-    "comedy": []
+  "videos": {},
+  "tagCategories": {
+    "22": {},
+    "fafda": {},
+    "af": {},
+    "cast": {},
+    "casts": {},
+    "pornstars": {},
+    "genre": {}
   },
-  "cast": {
-    "tom cruise": []
-  }
+  "playlists": {}
 }
