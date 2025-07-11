@@ -1,28 +1,37 @@
 .btn {
-  background: rgb(16, 16, 16);
-  border: 1px solid rgb(58, 58, 58);
   border-radius: 5px;
   padding: 5px 10px;
   font-size: 12px;
   outline: none;
-  color: white;
   cursor: pointer;
   text-align: center;
   font-weight: lighter;
   transition:background-color .3s ease;
-  /* text-decoration: underline;
-  text-underline-offset: 2px;
-  transition: text-underline-offset 0.3s ease; */
 }
+.btn.classic, .btn{
+  background: rgb(16, 16, 16);
+  border: 1px solid rgb(58, 58, 58);
+  color: white;
+}
+.btn.submit{
+  background-color: rgb(239, 239, 239);
+  color: #101010;
+  font-weight:normal;
+}
+
+.btn:hover {
+  background-color: rgb(42, 42, 42);
+}
+.btn.submit:hover{
+  background-color: #dcdcdc;
+  color: #000000; 
+}
+
 .btnWrapper{
   display: inline-flex;
   justify-content: center;
   align-items: center;
   gap: 5px;
-}
-.btn:hover {
-  /* text-underline-offset: 10px; */
-  background-color: rgb(42, 42, 42);
 }
 
 .btn.activePage {

@@ -1,58 +1,151 @@
-const express = require('express')
-const router = express.Router();
+const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
-const dbPath = path.join(__dirname, './db.json');
+function createRouter(videoDirectory) {
+  const router = express.Router();
+  const dbPath = path.join(__dirname, './db.json');
 
-// Route to check DB existence
-router.get('/check-db', (req, res) => {
-  if (fs.existsSync(dbPath)) {
-    res.json({ exists: true });
-  } else {
-    fs.writeFileSync(dbPath, JSON.stringify(), 'utf8');
-    res.json({ exists: false });
+  router.get('/check-db', (req, res) => {
+    if (fs.existsSync(dbPath)) {
+      res.json({ exists: true });
+    } else {
+      fs.writeFileSync(dbPath, JSON.stringify({ videos: {}, tagCategories: {}, playlists: {}, fileDetails: {} }, null, 2), 'utf8');
+      res.json({ exists: false });
+    }
+  });
+
+  router.post('/addCategory', (req, res) => {
+    const { categoryName } = req.body;
+    if (!categoryName || typeof categoryName !== 'string') return res.status(400).json({ error: 'Invalid category name' });
+
+    let db = readDB();
+    if (db.tagCategories[categoryName]) return res.status(400).json({ error: 'Category already exists' });
+
+    db.tagCategories[categoryName] = {};
+    writeDB(db);
+    res.json({ success: true });
+  });
+
+  router.get('/tagCategories', (req, res) => {
+    const db = readDB();
+    res.json(db.tagCategories || {});
+  });
+
+  router.get('/videoDetails', async (req, res) => {
+    const { fileName } = req.query;
+    if (!fileName) return res.status(400).json({ error: 'Missing fileName' });
+
+    const filePath = path.join(videoDirectory, fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+
+    const db = readDB();
+    const hash = await generateFileHash(filePath);
+
+    if (!db.videos[hash]) return res.json({ title: '', tags: {} });
+
+    res.json({
+      title: db.videos[hash].title || '',
+      tags: db.videos[hash].tags || {}
+    });
+  });
+
+  router.post('/updateTitle', async (req, res) => {
+    const { fileName, title } = req.body;
+    if (!fileName || typeof title !== 'string') return res.status(400).json({ error: 'Missing data' });
+
+    const filePath = path.join(videoDirectory, fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+
+    const db = readDB();
+    const hash = await generateFileHash(filePath);
+
+    if (!db.videos[hash]) db.videos[hash] = { fileName, tags: {} };
+
+    db.videos[hash].title = title;
+    writeDB(db);
+
+    res.json({ success: true });
+  });
+
+  router.post('/updateVideo', async (req, res) => {
+    const { fileName, title, tags } = req.body;
+    if (!fileName) return res.status(400).json({ error: 'Missing fileName' });
+
+    const filePath = path.join(videoDirectory, fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+
+    const db = readDB();
+    const hash = await generateFileHash(filePath);
+
+    if (!db.videos[hash]) db.videos[hash] = { fileName, tags: {} };
+    
+    // Store old tags for cleanup
+    const oldTags = db.videos[hash].tags || {};
+
+    db.videos[hash].title = title || '';
+    db.videos[hash].tags = tags || {};
+
+    // Cleanup: Remove video hash from tags that no longer exist
+    Object.entries(oldTags).forEach(([category, tagList]) => {
+      if (!db.tagCategories[category]) return;
+
+      tagList.forEach(tag => {
+        if (db.tagCategories[category][tag]) {
+          db.tagCategories[category][tag] = db.tagCategories[category][tag].filter(h => h !== hash);
+          if (db.tagCategories[category][tag].length === 0) {
+            delete db.tagCategories[category][tag];
+          }
+        }
+      });
+    });
+
+    // Add new tags
+    if (tags && typeof tags === 'object') {
+      Object.entries(tags).forEach(([category, tagList]) => {
+        if (!Array.isArray(tagList)) return;
+
+        if (!db.tagCategories[category]) db.tagCategories[category] = {};
+
+        tagList.forEach(tag => {
+          if (!db.tagCategories[category][tag]) db.tagCategories[category][tag] = [];
+          if (!db.tagCategories[category][tag].includes(hash)) {
+            db.tagCategories[category][tag].push(hash);
+          }
+        });
+      });
+    }
+
+    writeDB(db);
+    res.json({ success: true });
+  });
+
+  function readDB() {
+    try {
+      return JSON.parse(fs.readFileSync(dbPath, 'utf8') || '{}');
+    } catch {
+      return { videos: {}, tagCategories: {}, playlists: {}, fileDetails: {} };
+    }
   }
-});
 
-// Route to add new tag category
-router.post('/addCategory', (req, res) => {
-  let rawData;
-  try {
-    rawData = fs.readFileSync(dbPath, 'utf8');
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to read database file' });
+  function writeDB(data) {
+    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
   }
 
-  let db;
-  try {
-    db = JSON.parse(rawData || '{}');
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to parse database file' });
+  async function generateFileHash(filePath) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256');
+      const stream = fs.createReadStream(filePath, { start: 0, end: (2 * 1024 * 1024) - 1 }); // First 2MB
+
+      stream.on('data', chunk => hash.update(chunk));
+      stream.on('end', () => resolve(hash.digest('hex')));
+      stream.on('error', reject);
+    });
   }
 
-  const { categoryName } = req.body;
+  return router;
+}
 
-  if (!categoryName || typeof categoryName !== 'string') {
-    return res.status(400).json({ error: 'Invalid category name' });
-  }
 
-  if (!db.tagCategories) {
-    db.tagCategories = {};
-  }
-
-  if (db.tagCategories[categoryName]) {
-    return res.status(400).json({ error: 'Category already exists' });
-  }
-
-  db.tagCategories[categoryName] = {};
-
-  try {
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), 'utf8');
-    res.json({ success: true, message: 'Category added successfully' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to update database file' });
-  }
-});
-
-module.exports = router;
+module.exports = createRouter;

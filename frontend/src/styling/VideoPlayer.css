@@ -36,6 +36,7 @@
   box-sizing: border-box;
   overflow: hidden;
   font-size: 12px;
+  min-height: 80vh;
 }
 
 .custom-player video {
@@ -288,44 +289,5 @@ input.volumeBar::-moz-range-progress {
 
 /* ==== Next Previews ==== */
 .nextPreviews {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  box-sizing: border-box;
   gap: 2.5rem 10px;
-}
-
-.nextPreviews .videoBoxWrapper {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  align-items: center;
-}
-
-.nextPreviews .videoBox {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  background: #1B1B1B;
-  width: 100%;
-}
-
-.nextPreviews .videoLink {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.nextPreviews .videoBox video {
-  width: 100%;
-  object-fit: cover;
-  background-position: center;
-}
-
-.nextPreviews .title {
-  font-size: 10px !important;
-  margin: 0;
 }

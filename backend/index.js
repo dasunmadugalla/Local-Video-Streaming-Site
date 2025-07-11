@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const primaryDB_handler = require('./primaryDb/dbHandler')
+const createPrimaryDBHandler = require('./primaryDb/dbHandler');
 
 const app = express();
 const port = 3000;
@@ -18,7 +18,7 @@ const videoDirectory = "L:\\ivy tega\\New folder";
 //const videoDirectory = "F:\\xx";
 
 app.use('/videos', express.static(videoDirectory));
-app.use('/api', primaryDB_handler);
+app.use('/api', createPrimaryDBHandler(videoDirectory));
 
 
 let shuffledCache = []; // Cache shuffled list

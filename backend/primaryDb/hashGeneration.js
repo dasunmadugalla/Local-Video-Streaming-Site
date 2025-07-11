@@ -7,12 +7,9 @@ function generateFileHash(filePath) {
     const stream = fs.createReadStream(filePath);
 
     stream.on('error', err => reject(err));
-
     stream.on('data', chunk => hash.update(chunk));
-
-    stream.on('end', () => {
-      const fileHash = hash.digest('hex');
-      resolve(fileHash);
-    });
+    stream.on('end', () => resolve(hash.digest('hex')));
   });
 }
+
+module.exports = generateFileHash;
