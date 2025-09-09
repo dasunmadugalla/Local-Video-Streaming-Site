@@ -7,6 +7,7 @@ const createPrimaryDBHandler = require('./primaryDb/dbHandler');
 
 const app = express();
 const port = 3000;
+const PASSCODE = "12345";
 
 app.use(cors());
 app.use(express.json());
@@ -148,6 +149,17 @@ app.get('/allfiles', (req, res) => {
     res.json(filtered);
   });
 });
+
+app.post('/api/verify-passcode', (req, res) => {
+  const { password } = req.body;
+
+  if (password === PASSCODE) {
+    return res.json({ success: true });
+  } else {
+    return res.status(401).json({ success: false, message: "Wrong password" });
+  }
+});
+
 
 app.get('/random', (req, res) => {
   const { limit = 8 } = req.query;

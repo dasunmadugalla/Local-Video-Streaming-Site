@@ -1,0 +1,78 @@
+.access-container {
+    width: 100%;
+    height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, sans-serif;
+}
+
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.access-input {
+  padding: 7.5px 20px;
+  font-size: 12px;
+  width: 225px;
+  letter-spacing: 2.5px;
+  cursor:text;
+}
+.access-input:focus {
+  border-color: #3f3f3f; /* smooth color change */
+}
+input::placeholder{
+    letter-spacing: 0.5px;
+    /* visibility: hidden; */
+    color: rgb(57, 57, 57);
+}
+.access-input:focus::placeholder {
+  visibility: hidden;
+}
+
+.eye-icon {
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #818181;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+.error-container {
+  height: 20px; /* adjust based on your font size */
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.error-text {
+  color: rgb(108, 108, 108);
+  font-size: 12px;
+}
+
+
+/* Keep your existing btn and submit classes untouched */
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  15% { transform: translateX(-10px); }
+  30% { transform: translateX(10px); }
+  45% { transform: translateX(-12px); }
+  60% { transform: translateX(12px); }
+  75% { transform: translateX(-8px); }
+  90% { transform: translateX(8px); }
+  100% { transform: translateX(0); }
+}
+
+.shake {
+  animation: shake 0.6s ease;
+}
