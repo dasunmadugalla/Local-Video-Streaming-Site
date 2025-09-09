@@ -31,11 +31,18 @@ const PlayerControls = ({
     volumeRef.current?.style.setProperty('--volume-percent', `${vol * 100}%`);
   };
 
-  const formatTime = (time) => {
-    const mins = Math.floor(time / 60).toString().padStart(2, '0');
-    const secs = Math.floor(time % 60).toString().padStart(2, '0');
-    return `${mins}:${secs}`;
-  };
+ const formatTime = (time) => {
+  const hrs = Math.floor(time / 3600);
+  const mins = Math.floor((time % 3600) / 60);
+  const secs = Math.floor(time % 60);
+
+  const hrsStr = hrs > 0 ? `${hrs.toString().padStart(2, '0')}:` : '';
+  const minsStr = mins.toString().padStart(2, '0');
+  const secsStr = secs.toString().padStart(2, '0');
+
+  return `${hrsStr}${minsStr}:${secsStr}`;
+};
+
 
   return (
     <div className="controls-row">

@@ -117,7 +117,7 @@ const FileList = ({ isHome }) => {
           </button>
 
           {getPageNumbers().map(num => (
-            <button key={num} onClick={() => goToPage(num)} className={`btn ${num === page ? 'activePage' : ''}`}>
+            <button key={num} onClick={() => goToPage(num)} className={`btn cstmbtn ${num === page ? 'activePage' : ''}`}>
               {num}
             </button>
           ))}

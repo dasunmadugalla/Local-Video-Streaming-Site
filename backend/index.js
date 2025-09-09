@@ -14,8 +14,11 @@ app.use(express.json());
 //const videoDirectory = "C:\\Users\\dasun\\Downloads\\collection";
 //const videoDirectory = "C:\\Users\\dasun\\Downloads";
 //const videoDirectory = "L:\\program";
-const videoDirectory = "L:\\ivy tega\\New folder";
+//const videoDirectory = "L:\\ivy tega\\New folder\\checked";
+//const videoDirectory = "L:\\ivy tega\\New folder";
 //const videoDirectory = "F:\\xx";
+const videoDirectory = "X:\\"
+//const videoDirectory = "E:\\lexer\\program"
 
 app.use('/videos', express.static(videoDirectory));
 app.use('/api', createPrimaryDBHandler(videoDirectory));

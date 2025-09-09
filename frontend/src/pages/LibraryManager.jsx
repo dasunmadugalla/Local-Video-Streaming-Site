@@ -26,6 +26,9 @@ function LibraryManager() {
   const [tagCategories, setTagCategories] = useState({});
   const [tagInputs, setTagInputs] = useState({});
 
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedHashes, setSelectedHashes] = useState([]);
+
   const pageParam = parseInt(searchParams.get('page')) || 1;
   const [page, setPage] = useState(pageParam);
 
@@ -178,6 +181,10 @@ function LibraryManager() {
         setOrder={setOrder}
       />
 
+      <button className='btn classic btnWrapper' onClick={() => setSelectMode(prev => !prev)}>
+        {selectMode ? 'Cancel Select' : 'Select'}
+      </button>
+
       {showCategoryBox && (
         <div className="categoryModal">
           <input
@@ -220,6 +227,9 @@ function LibraryManager() {
         files={files}
         tagCategories={tagCategories}
         openTitleModal={openTitleModal}
+        selectMode={selectMode}
+        selectedHashes={selectedHashes}
+        setSelectedHashes={setSelectedHashes}
       />
 
       <div className="pagination">
