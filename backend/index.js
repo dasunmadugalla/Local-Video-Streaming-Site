@@ -7,7 +7,7 @@ const createPrimaryDBHandler = require('./primaryDb/dbHandler');
 
 const app = express();
 const port = 3000;
-const PASSCODE = "12345";
+const PASSCODE = "197944";
 
 app.use(cors());
 app.use(express.json());

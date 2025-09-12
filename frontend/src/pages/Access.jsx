@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { useNavigate, useLocation } from 'react-router-dom';
 import '../styling/Access.css';
 
 function Access() {
@@ -8,7 +9,10 @@ function Access() {
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
   const inputRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
+  // focus input behavior
   useEffect(() => {
     const input = inputRef.current;
     if (input) input.focus();
@@ -43,20 +47,41 @@ function Access() {
 
       if (res.ok) {
         const data = await res.json();
-        console.log("✅ Access granted:", data);
-        setError('');
-        // 👉 redirect to main page or unlock content
-        alert("Access granted!");
+        if (data.success) {
+          // 1) set session cookie (no expires => session cookie)
+          document.cookie = 'sessionToken=true; path=/';
+
+          // 2) broadcast login to other open tabs
+          try {
+            const bc = new BroadcastChannel('auth_channel');
+            bc.postMessage('login');
+            bc.close();
+          } catch (e) {
+            // BroadcastChannel might not be available in very old browsers; ignore if fails
+          }
+
+          // 3) also call global setter if available (keeps React state in-sync)
+          if (window.setLogin) window.setLogin();
+
+          setError('');
+          const redirectPath = location.state?.from || '/';
+          navigate(redirectPath, { replace: true });
+          return;
+        } else {
+          setError('Wrong password');
+        }
       } else {
         setError('Wrong password');
-        setShake(true);
-        setPassword('');
-        setTimeout(() => setShake(false), 600);
       }
     } catch (err) {
       console.error("Error verifying passcode:", err);
       setError('Server error, try again later.');
     }
+
+    // on failure: shake + reset
+    setShake(true);
+    setPassword('');
+    setTimeout(() => setShake(false), 600);
   };
 
   const handleKeyPress = (e) => {
@@ -67,6 +92,7 @@ function Access() {
 
   return (
     <div className="access-container">
+      <h1 className='passcode-title'>Enter passcode to grant access</h1>
       <div className={`input-container ${shake ? 'shake' : ''}`}>
         <input
           ref={inputRef}

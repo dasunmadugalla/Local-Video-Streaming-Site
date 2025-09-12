@@ -21,7 +21,7 @@ const FileList = ({ isHome }) => {
   const pageParam = parseInt(searchParams.get('page')) || 1;
   const [page, setPage] = useState(isHome ? 1 : pageParam);
 
-  const LOAD_COUNT = 12;
+  const LOAD_COUNT = 15;
 
   const fetchPage = (currentPage) => {
     const offset = (currentPage - 1) * LOAD_COUNT;

@@ -16,11 +16,13 @@
 }
 
 .access-input {
-  padding: 7.5px 20px;
+  padding: 9px 25px;
   font-size: 12px;
   width: 225px;
   letter-spacing: 2.5px;
   cursor:text;
+  background-color: rgb(18, 18, 18) !important;
+  border: 1px solid rgb(38, 38, 38);
 }
 .access-input:focus {
   border-color: #3f3f3f; /* smooth color change */
@@ -57,6 +59,17 @@ input::placeholder{
 .error-text {
   color: rgb(108, 108, 108);
   font-size: 12px;
+}
+.passcode-title{
+  color: rgb(174, 174, 174);
+  font-weight:lighter;
+  text-align: center;
+  text-transform: capitalize;
+  font-size: 20px;
+  margin-bottom: 30px;
+}
+.title-span{
+  font-size: 16px;
 }
 
 

@@ -43,7 +43,7 @@ const VideoPlayer = () => {
   }, [fileName]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/random?limit=8")
+    fetch("http://localhost:3000/random?limit=9")
       .then(res => res.json())
       .then(data => setRandomNext(data.filter(f => f !== fileName)));
     window.scrollTo({ top: 0, behavior: 'smooth' });

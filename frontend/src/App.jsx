@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import FileList from './pages/FileList';
 import VideoPlayer from './pages/VideoPlayer';
 import PageNotFount from './pages/PageNotFount';
@@ -9,6 +9,12 @@ import { FaUserCircle, FaCircle } from 'react-icons/fa';
 import Settings from './pages/Settings';
 import LibraryManager from './pages/LibraryManager';
 import Access from './pages/Access';
+
+// Helper to read session cookie
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? match[2] : null;
+}
 
 // NavigationBar component separated for clarity
 function NavigationBar() {
@@ -37,23 +43,84 @@ function NavigationBar() {
 function AppContent() {
   const [presentPri, setPresentPri] = useState(undefined);
   const [showNotification, setShowNotification] = useState(false);
-  const location = useLocation();
 
-  // Hide nav bar only on Access page
+  // Initialize logged-in state from session cookie
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    getCookie('sessionToken') === 'true'
+  );
+
+  const location = useLocation();
+  const navigate = useNavigate();
   const hideNav = location.pathname === "/access";
 
+  // Redirect to /access if not logged in
   useEffect(() => {
+    if (!isLoggedIn && location.pathname !== "/access") {
+      navigate("/access");
+    }
+  }, [isLoggedIn, location.pathname, navigate]);
+
+  // BroadcastChannel: listen for login/logout from other tabs
+  useEffect(() => {
+    const channel = new BroadcastChannel('auth_channel');
+    channel.onmessage = (e) => {
+      if (e.data === 'login') {
+        // cookie should now exist; update state
+        setIsLoggedIn(true);
+      } else if (e.data === 'logout') {
+        setIsLoggedIn(false);
+      }
+    };
+    return () => channel.close();
+  }, []);
+
+  // Expose a safe global login function that sets cookie + broadcasts
+  useEffect(() => {
+    window.setLogin = () => {
+      // session cookie (no expires) => deleted when browser closes
+      document.cookie = 'sessionToken=true; path=/';
+      setIsLoggedIn(true);
+      // notify other tabs
+      const bc = new BroadcastChannel('auth_channel');
+      bc.postMessage('login');
+      bc.close();
+    };
+
+    window.setLogout = () => {
+      // clear cookie
+      document.cookie = 'sessionToken=; Max-Age=0; path=/';
+      setIsLoggedIn(false);
+      const bc = new BroadcastChannel('auth_channel');
+      bc.postMessage('logout');
+      bc.close();
+      // optionally navigate to /access
+      try { navigate('/access'); } catch (e) {}
+    };
+
+    // cleanup not necessary for globals; if you re-mount you'd overwrite
+  }, [navigate]);
+
+  // DB existence check with sessionStorage cache (unchanged)
+  useEffect(() => {
+    const cachedPri = sessionStorage.getItem("presentPri");
+
+    if (cachedPri !== null) {
+      setPresentPri(cachedPri === "true");
+      return;
+    }
+
     fetch('http://localhost:3000/api/check-db')
       .then(res => res.json())
       .then(data => {
         if (data.exists) {
-          console.log('DB exists!');
           setPresentPri(true);
+          sessionStorage.setItem("presentPri", "true");
+
           setShowNotification(true);
           setTimeout(() => setShowNotification(false), 4000);
         } else {
-          console.log('DB not found!');
           setPresentPri(false);
+          sessionStorage.setItem("presentPri", "false");
         }
       })
       .catch(err => console.error('Error:', err));
