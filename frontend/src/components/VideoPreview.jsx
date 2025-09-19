@@ -1,9 +1,10 @@
 import React, { useRef, useState, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
+import { API_BASE } from '../utils/api';
 
 const VideoPreview = forwardRef(({ file }, ref) => {
   const videoRef = useRef(null);
-  const videoSrc = `http://localhost:3000/videos/${encodeURIComponent(file)}`;
+  const videoSrc = `${API_BASE}/videos/${encodeURIComponent(file)}`;
   // const [previewParts, setPreviewParts] = useState([]);
   const currentClipIndex = useRef(0);
   const [isLoaded, setIsLoaded] = useState(false);

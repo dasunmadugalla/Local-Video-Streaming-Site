@@ -1,11 +1,10 @@
 @echo off
-echo Starting Backend and Frontend in same terminal...
+:: Start Backend hidden
+powershell -WindowStyle Hidden -Command ^
+  "Start-Process 'npm' -ArgumentList 'run dev -- --host' -WorkingDirectory 'C:\Users\dasun\OneDrive\Desktop\delete practice\backend' -WindowStyle Hidden"
 
-cd /d "C:\Users\dasun\OneDrive\Desktop\delete practice\backend"
-start "" /b cmd /c "npm run dev -- --host"
+:: Start Frontend hidden
+powershell -WindowStyle Hidden -Command ^
+  "Start-Process 'npm' -ArgumentList 'run dev -- --host' -WorkingDirectory 'C:\Users\dasun\OneDrive\Desktop\delete practice\frontend' -WindowStyle Hidden"
 
-cd /d "C:\Users\dasun\OneDrive\Desktop\delete practice\frontend"
-start "" /b cmd /c "npm run dev -- --host"
-
-echo Both started in background of this same window!
-pause
+exit

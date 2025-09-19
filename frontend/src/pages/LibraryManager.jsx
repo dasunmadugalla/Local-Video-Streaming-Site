@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import HeaderControls from '../components/HeaderControls';
 import TagModal from '../components/TagModal';
 import VideoGrid from '../components/VideoGrid';
+import { API_BASE } from '../utils/api';
 
 function LibraryManager() {
   const [files, setFiles] = useState([]);
@@ -36,7 +37,7 @@ function LibraryManager() {
 
   const fetchFiles = () => {
     const offset = (page - 1) * LIMIT;
-    fetch(`http://localhost:3000/libraryfiles?sortBy=${sortBy}&order=${order}&offset=${offset}&limit=${LIMIT}`)
+    fetch(`${API_BASE}/libraryfiles?sortBy=${sortBy}&order=${order}&offset=${offset}&limit=${LIMIT}`)
       .then(res => res.json())
       .then(data => {
         setFiles(data.files);
@@ -47,7 +48,7 @@ function LibraryManager() {
   };
 
   const fetchCategories = () => {
-    fetch('http://localhost:3000/api/tagCategories')
+    fetch(`${API_BASE}/api/tagCategories`)
       .then(res => res.json())
       .then(data => setTagCategories(data))
       .catch(err => console.error('Failed to load categories', err));
@@ -55,7 +56,7 @@ function LibraryManager() {
 
   const addCategory = () => {
     if (!newCategory.trim()) return;
-    fetch('http://localhost:3000/api/addCategory', {
+    fetch(`${API_BASE}/api/addCategory`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ categoryName: newCategory.trim() })
@@ -83,7 +84,7 @@ function LibraryManager() {
     setSelectedFile(fileName);
     setTitleInput('');
     const initialTags = {};
-    fetch(`http://localhost:3000/api/videoDetails?fileName=${encodeURIComponent(fileName)}`)
+    fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`)
       .then(res => res.json())
       .then(data => {
         setTitleInput(data.title || '');
@@ -107,7 +108,7 @@ function LibraryManager() {
       if (Array.isArray(arr) && arr.length) tags[cat] = arr;
     });
 
-    fetch('http://localhost:3000/api/updateVideo', {
+    fetch(`${API_BASE}/api/updateVideo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fileName: selectedFile, title: titleInput.trim(), tags })

@@ -9,6 +9,7 @@ import { FaUserCircle, FaCircle } from 'react-icons/fa';
 import Settings from './pages/Settings';
 import LibraryManager from './pages/LibraryManager';
 import Access from './pages/Access';
+import { API_BASE } from './utils/api'; // <- use API_BASE helper
 
 // Helper to read session cookie
 function getCookie(name) {
@@ -53,19 +54,19 @@ function AppContent() {
   const navigate = useNavigate();
   const hideNav = location.pathname === "/access";
 
-  // Redirect to /access if not logged in
+  // Redirect to /access if not logged in — pass original URL in state.from
   useEffect(() => {
     if (!isLoggedIn && location.pathname !== "/access") {
-      navigate("/access");
+      const fullFrom = location.pathname + location.search + location.hash;
+      navigate('/access', { state: { from: fullFrom } });
     }
-  }, [isLoggedIn, location.pathname, navigate]);
+  }, [isLoggedIn, location.pathname, location.search, location.hash, navigate]);
 
   // BroadcastChannel: listen for login/logout from other tabs
   useEffect(() => {
     const channel = new BroadcastChannel('auth_channel');
     channel.onmessage = (e) => {
       if (e.data === 'login') {
-        // cookie should now exist; update state
         setIsLoggedIn(true);
       } else if (e.data === 'logout') {
         setIsLoggedIn(false);
@@ -77,30 +78,24 @@ function AppContent() {
   // Expose a safe global login function that sets cookie + broadcasts
   useEffect(() => {
     window.setLogin = () => {
-      // session cookie (no expires) => deleted when browser closes
       document.cookie = 'sessionToken=true; path=/';
       setIsLoggedIn(true);
-      // notify other tabs
       const bc = new BroadcastChannel('auth_channel');
       bc.postMessage('login');
       bc.close();
     };
 
     window.setLogout = () => {
-      // clear cookie
       document.cookie = 'sessionToken=; Max-Age=0; path=/';
       setIsLoggedIn(false);
       const bc = new BroadcastChannel('auth_channel');
       bc.postMessage('logout');
       bc.close();
-      // optionally navigate to /access
       try { navigate('/access'); } catch (e) {}
     };
-
-    // cleanup not necessary for globals; if you re-mount you'd overwrite
   }, [navigate]);
 
-  // DB existence check with sessionStorage cache (unchanged)
+  // DB existence check with sessionStorage cache
   useEffect(() => {
     const cachedPri = sessionStorage.getItem("presentPri");
 
@@ -109,7 +104,7 @@ function AppContent() {
       return;
     }
 
-    fetch('http://localhost:3000/api/check-db')
+    fetch(`${API_BASE}/api/check-db`)
       .then(res => res.json())
       .then(data => {
         if (data.exists) {

@@ -104,3 +104,10 @@
   from { opacity: 1; transform: translateY(0); }
   to   { opacity: 0; transform: translateY(10px); }
 }
+
+/* For screens up to 600px (mobile) */
+@media (max-width: 500px) {
+  .subContainer {
+    grid-template-columns: 1fr;
+  }
+}

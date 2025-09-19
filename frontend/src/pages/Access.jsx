@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styling/Access.css';
+import { API_BASE } from '../utils/api';
 
 function Access() {
   const [password, setPassword] = useState('');
@@ -39,7 +40,7 @@ function Access() {
 
   const handleSubmit = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/verify-passcode', {
+      const res = await fetch(`${API_BASE}/api/verify-passcode`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),

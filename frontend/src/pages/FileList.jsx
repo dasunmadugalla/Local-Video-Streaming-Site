@@ -4,6 +4,7 @@ import { FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight } from
 import { FileContext } from '../components/FileContext';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import '../styling/VideoGrid.css';
+import { API_BASE } from '../utils/api';
 
 const FileList = ({ isHome }) => {
   const {
@@ -30,7 +31,7 @@ const FileList = ({ isHome }) => {
 
     // ✅ Only reshuffle if no cached list exists
     if (shuffledCache.length === 0) {
-      fetch(`http://localhost:3000/files?offset=${offset}&limit=${LOAD_COUNT}&reshuffle=true`)
+      fetch(`${API_BASE}/files?offset=${offset}&limit=${LOAD_COUNT}&reshuffle=true`)
         .then(res => res.json())
         .then(data => {
           setAllCount(data.total);

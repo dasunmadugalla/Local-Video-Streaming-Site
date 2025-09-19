@@ -19,6 +19,7 @@ app.use(express.json());
 //const videoDirectory = "L:\\ivy tega\\New folder";
 //const videoDirectory = "F:\\xx";
 const videoDirectory = "X:\\"
+// const videoDirectory = "C:\\Users\\dasun\\Downloads\\Telegram Desktop"
 //const videoDirectory = "E:\\lexer\\program"
 
 app.use('/videos', express.static(videoDirectory));
@@ -182,6 +183,10 @@ app.get('/random', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+// app.listen(port, () => {
+//   console.log(`Server running on http://localhost:${port}`);
+// });
+
+app.listen(port, "0.0.0.0", () => {
+  console.log("Server running on http://0.0.0.0:3000");
 });
