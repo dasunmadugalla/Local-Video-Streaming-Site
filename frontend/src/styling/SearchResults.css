@@ -1,0 +1,20 @@
+.searchResult-label{
+    font-weight: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 20px;
+    color: rgb(255, 255, 255);
+}
+h2{
+    font-weight:lighter;
+    font-size: 16px;
+}
+.searchResults-videoCount{
+    color: rgb(225, 225, 225);
+    font-size: 12px;
+}
+.query-text {
+  color: var(--secondary_color); /* change to any color you like */
+  font-weight: bold; /* optional */
+}

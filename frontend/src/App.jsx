@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import FileList from './pages/FileList';
@@ -9,7 +10,8 @@ import { FaUserCircle, FaCircle } from 'react-icons/fa';
 import Settings from './pages/Settings';
 import LibraryManager from './pages/LibraryManager';
 import Access from './pages/Access';
-import { API_BASE } from './utils/api'; // <- use API_BASE helper
+import SearchResults from './pages/SearchResults';
+import { API_BASE } from './utils/api'; // keep using API_BASE
 
 // Helper to read session cookie
 function getCookie(name) {
@@ -17,8 +19,31 @@ function getCookie(name) {
   return match ? match[2] : null;
 }
 
-// NavigationBar component separated for clarity
 function NavigationBar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // initialize from URL q if present
+  const searchParams = new URLSearchParams(location.search);
+  const qInit = searchParams.get('q') || '';
+
+  const [query, setQuery] = useState(qInit);
+
+  useEffect(() => {
+    // update query if user navigates (keeps input in sync)
+    const params = new URLSearchParams(location.search);
+    const qp = params.get('q') || '';
+    setQuery(qp);
+  }, [location.search]);
+
+  const submitSearch = (e) => {
+    e.preventDefault();
+    const trimmed = (query || '').trim();
+    // navigate to /search with q param and page=1
+    const url = trimmed ? `/search?q=${encodeURIComponent(trimmed)}&page=1` : `/search?page=1`;
+    navigate(url);
+  };
+
   return (
     <div className="navigationBar">
       <div className="right">
@@ -32,6 +57,29 @@ function NavigationBar() {
           <li><Link to="/library">Library</Link></li>
           <li><Link to="/category">Category</Link></li>
         </ul>
+      </div>
+
+      <div className="center">
+        {/* Search form */}
+        <form onSubmit={submitSearch} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="search"
+            placeholder="Search videos..."
+            value={query}
+            className='search-input'
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search videos"
+            style={{
+              padding: '6px 10px',
+              borderRadius: 6,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(0,0,0,0.6)',
+              color: 'white',
+              width: 320
+            }}
+          />
+          <button type="submit" className="btn classic">Search</button>
+        </form>
       </div>
 
       <div className="left">
@@ -135,6 +183,7 @@ function AppContent() {
         <Route path="/" element={<FileList isHome={true} />} />
         <Route path="/videos" element={<FileList isHome={false} />} />
         <Route path="/watch/:fileName" element={<VideoPlayer />} />
+        <Route path="/search" element={<SearchResults />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/library" element={<LibraryManager />} />
         <Route path="/access" element={<Access />} />

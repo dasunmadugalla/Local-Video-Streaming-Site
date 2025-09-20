@@ -1,4 +1,4 @@
-// ======== Express Backend (server.js) ==========
+// server.js
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -38,16 +38,17 @@ const formatFileSize = (bytes) => {
   return `${gb.toFixed(2)} GB`;
 };
 
+const VIDEO_EXTS = ['.mp4', '.mkv', '.mov', '.avi'];
+
 app.get('/files', (req, res) => {
   const { offset = 0, limit = 150, reshuffle = false } = req.query;
-  const videoExtensions = ['.mp4', '.mkv', '.mov', '.avi'];
 
   if (shuffledCache.length === 0 || reshuffle === 'true') {
     fs.readdir(videoDirectory, (err, files) => {
       if (err) return res.status(500).json({ error: 'Failed to read directory' });
 
       const filtered = files.filter(file =>
-        videoExtensions.includes(path.extname(file).toLowerCase())
+        VIDEO_EXTS.includes(path.extname(file).toLowerCase())
       );
 
       shuffledCache = filtered.slice();
@@ -81,15 +82,48 @@ const sendPaginated = (res, offset, limit, includeFullList) => {
   }
 };
 
-app.get('/libraryfiles', (req, res) => {
-  const { sortBy = 'fileName', order = 'ascending', offset = 0, limit = 50 } = req.query;
-  const videoExtensions = ['.mp4', '.mkv', '.mov', '.avi'];
+// SEARCH endpoint
+// Example: GET /search?q=term&offset=0&limit=15
+app.get('/search', (req, res) => {
+  const { q = '', offset = 0, limit = 15 } = req.query;
+  const qLower = String(q).trim().toLowerCase();
 
   fs.readdir(videoDirectory, (err, files) => {
     if (err) return res.status(500).json({ error: 'Failed to read directory' });
 
     const filtered = files.filter(file =>
-      videoExtensions.includes(path.extname(file).toLowerCase())
+      VIDEO_EXTS.includes(path.extname(file).toLowerCase())
+    );
+
+    // if query provided, filter by filename contains (case-insensitive)
+    const matched = qLower
+      ? filtered.filter(f => f.toLowerCase().includes(qLower))
+      : filtered.slice(); // copy all when q is empty
+
+    // sort alphabetically for predictable results
+    matched.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+
+    const total = matched.length;
+    const start = parseInt(offset);
+    const limitNum = parseInt(limit);
+    const paginated = matched.slice(start, start + limitNum);
+
+    res.json({
+      total,
+      files: paginated
+    });
+  });
+});
+
+
+app.get('/libraryfiles', (req, res) => {
+  const { sortBy = 'fileName', order = 'ascending', offset = 0, limit = 50 } = req.query;
+
+  fs.readdir(videoDirectory, (err, files) => {
+    if (err) return res.status(500).json({ error: 'Failed to read directory' });
+
+    const filtered = files.filter(file =>
+      VIDEO_EXTS.includes(path.extname(file).toLowerCase())
     );
 
     const detailedList = filtered.map(file => {
@@ -138,13 +172,11 @@ app.get('/libraryfiles', (req, res) => {
 });
 
 app.get('/allfiles', (req, res) => {
-  const videoExtensions = ['.mp4', '.mkv', '.mov', '.avi'];
-
   fs.readdir(videoDirectory, (err, files) => {
     if (err) return res.status(500).json({ error: 'Failed to read directory' });
 
     const filtered = files.filter(file =>
-      videoExtensions.includes(path.extname(file).toLowerCase())
+      VIDEO_EXTS.includes(path.extname(file).toLowerCase())
     );
 
     res.json(filtered);
@@ -164,13 +196,12 @@ app.post('/api/verify-passcode', (req, res) => {
 
 app.get('/random', (req, res) => {
   const { limit = 8 } = req.query;
-  const videoExtensions = ['.mp4', '.mkv', '.mov', '.avi'];
 
   fs.readdir(videoDirectory, (err, files) => {
     if (err) return res.status(500).json({ error: 'Failed to read directory' });
 
     const filtered = files.filter(file =>
-      videoExtensions.includes(path.extname(file).toLowerCase())
+      VIDEO_EXTS.includes(path.extname(file).toLowerCase())
     );
 
     const shuffled = filtered.slice();
@@ -182,10 +213,6 @@ app.get('/random', (req, res) => {
     res.json(shuffled.slice(0, parseInt(limit)));
   });
 });
-
-// app.listen(port, () => {
-//   console.log(`Server running on http://localhost:${port}`);
-// });
 
 app.listen(port, "0.0.0.0", () => {
   console.log("Server running on http://0.0.0.0:3000");
