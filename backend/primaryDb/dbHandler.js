@@ -1,11 +1,29 @@
+// primaryDb/dbHandler.js
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-function createRouter(videoDirectory) {
+function createRouter(videoDirectoryOrResolver) {
   const router = express.Router();
   const dbPath = path.join(__dirname, './db.json');
+
+  // helper: resolve encoded fileName -> absolute path
+  const isResolverFunction = typeof videoDirectoryOrResolver === 'function';
+  function resolveFilePath(encodedNameOrFileName) {
+    if (!encodedNameOrFileName) return null;
+    if (isResolverFunction) {
+      // expected to return null or absolute path
+      try {
+        return videoDirectoryOrResolver(encodedNameOrFileName);
+      } catch (e) {
+        return null;
+      }
+    } else {
+      // previous behavior: treat input as plain fileName and join with single videoDirectory
+      return path.join(videoDirectoryOrResolver, encodedNameOrFileName);
+    }
+  }
 
   router.get('/check-db', (req, res) => {
     if (fs.existsSync(dbPath)) {
@@ -37,8 +55,8 @@ function createRouter(videoDirectory) {
     const { fileName } = req.query;
     if (!fileName) return res.status(400).json({ error: 'Missing fileName' });
 
-    const filePath = path.join(videoDirectory, fileName);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+    const filePath = resolveFilePath(fileName);
+    if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
 
     const db = readDB();
     const hash = await generateFileHash(filePath);
@@ -55,8 +73,8 @@ function createRouter(videoDirectory) {
     const { fileName, title } = req.body;
     if (!fileName || typeof title !== 'string') return res.status(400).json({ error: 'Missing data' });
 
-    const filePath = path.join(videoDirectory, fileName);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+    const filePath = resolveFilePath(fileName);
+    if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
 
     const db = readDB();
     const hash = await generateFileHash(filePath);
@@ -73,8 +91,8 @@ function createRouter(videoDirectory) {
     const { fileName, title, tags } = req.body;
     if (!fileName) return res.status(400).json({ error: 'Missing fileName' });
 
-    const filePath = path.join(videoDirectory, fileName);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+    const filePath = resolveFilePath(fileName);
+    if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
 
     const db = readDB();
     const hash = await generateFileHash(filePath);
@@ -136,7 +154,9 @@ function createRouter(videoDirectory) {
   async function generateFileHash(filePath) {
     return new Promise((resolve, reject) => {
       const hash = crypto.createHash('sha256');
-      const stream = fs.createReadStream(filePath, { start: 0, end: (2 * 1024 * 1024) - 1 }); // First 2MB
+      // read first 2MB (or less)
+      const size = Math.min(2 * 1024 * 1024, Math.max(1, (fs.existsSync(filePath) ? fs.statSync(filePath).size : 1)));
+      const stream = fs.createReadStream(filePath, { start: 0, end: size - 1 });
 
       stream.on('data', chunk => hash.update(chunk));
       stream.on('end', () => resolve(hash.digest('hex')));
@@ -146,6 +166,5 @@ function createRouter(videoDirectory) {
 
   return router;
 }
-
 
 module.exports = createRouter;

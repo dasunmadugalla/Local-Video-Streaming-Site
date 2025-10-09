@@ -1,6 +1,7 @@
-// src/pages/Settings.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { API_BASE } from '../utils/api';
+import { FileContext } from '../components/FileContext';
+import '../styling/Settings.css';
 
 function Settings() {
   const [folders, setFolders] = useState([]);
@@ -8,6 +9,9 @@ function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+
+  // get context setter so we can clear the shuffled cache after changes
+  const { setShuffledCache } = useContext(FileContext);
 
   const fetchFolders = () => {
     setLoading(true);
@@ -28,28 +32,36 @@ function Settings() {
     fetchFolders();
   }, []);
 
-  const addFolder = () => {
-    const trimmed = (newPath || '').trim();
-    if (!trimmed) return setMessage('Enter a folder path first');
+  const addFolder = (pathToAdd) => {
+    const raw = (pathToAdd ?? newPath ?? '').trim();
+    if (!raw) {
+      setMessage('Enter folder path first.');
+      return;
+    }
+
     setMessage('');
+    setSaving(true);
+
     fetch(`${API_BASE}/api/folders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: trimmed })
+      body: JSON.stringify({ path: raw })
     })
       .then(async res => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to add folder');
         setNewPath('');
+        setMessage('Folder added successfully.');
         fetchFolders();
-        setMessage('Folder added');
       })
       .catch(err => {
         console.error(err);
-        setMessage(err.message || 'Add failed');
-      });
+        setMessage(err.message || 'Add failed.');
+      })
+      .finally(() => setSaving(false));
   };
 
+  // Toggle active by clicking row
   const toggleActive = (id) => {
     setFolders(prev => prev.map(f => f.id === id ? { ...f, active: !f.active } : f));
   };
@@ -60,11 +72,12 @@ function Settings() {
       .then(async res => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Delete failed');
+        setMessage('Folder removed.');
         fetchFolders();
       })
       .catch(err => {
         console.error(err);
-        setMessage(err.message || 'Delete failed');
+        setMessage(err.message || 'Delete failed.');
       });
   };
 
@@ -79,64 +92,122 @@ function Settings() {
       .then(async res => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Save failed');
-        setMessage('Applied');
+
+        // 1) Clear client-side shuffled cache so FileList will re-fetch fresh list
+        try { setShuffledCache([]); } catch (e) { /* ignore if undefined */ }
+
+        // 2) Broadcast an update so any other tabs/components will re-fetch as well
+        try {
+          const bc = new BroadcastChannel('app_updates');
+          bc.postMessage({ type: 'foldersChanged' });
+          bc.close();
+        } catch (e) {
+          // older browsers may fail; it's fine
+        }
+
+        setMessage('Applied.');
         setSaving(false);
         fetchFolders();
       })
       .catch(err => {
         console.error(err);
-        setMessage(err.message || 'Save failed');
+        setMessage(err.message || 'Save failed.');
         setSaving(false);
       });
   };
 
+  const handleRowKeyDown = (e, id) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleActive(id);
+    }
+  };
+
   return (
-    <div className="mainContainer">
+    <div className="mainContainer settings-container">
       <h2>Settings — Folders</h2>
 
-      <div style={{ marginBottom: 12 }}>
-        <p style={{ margin: 0 }}>Add folder paths that contain videos. Each folder's path will be displayed under the name to avoid confusion.</p>
+      <div className="settings-intro">
+        <p>
+          Add server folders that contain videos. Type or paste a path like <code>C:\Videos\Movies</code>, then click Add.
+        </p>
+        <p className="settings-tip">
+          Tip: in Windows Explorer you can right-click a folder → <strong>Copy as path</strong>, then paste it into the input.
+        </p>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <input
-          type="text"
-          value={newPath}
-          onChange={e => setNewPath(e.target.value)}
-          placeholder="Enter full folder path (e.g. D:\\Videos\\Movies)"
-          style={{ flex: 1, padding: '8px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.6)', color: 'white' }}
-        />
-        <button className="btn classic" onClick={addFolder}>Add</button>
+      <div className="settings-input-area">
+        <div className="settings-input-row">
+          <input
+            type="text"
+            value={newPath}
+            onChange={(e) => setNewPath(e.target.value)}
+            placeholder="Enter full folder path (e.g. C:\Videos\Movies)"
+            className="settings-input"
+          />
+          <button
+            className="btn classic settings-add-btn"
+            onClick={() => addFolder()}
+            disabled={saving}
+          >
+            {saving ? 'Adding...' : 'Add'}
+          </button>
+        </div>
+
+        {message && <div className="settings-message">{message}</div>}
       </div>
 
-      {message && <div style={{ marginBottom: 12, color: 'var(--secondary_color)' }}>{message}</div>}
-
-      <div style={{ background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8 }}>
+      <div className="folders-panel">
         {loading ? (
-          <div>Loading folders...</div>
+          <div className="loading-text">Loading folders...</div>
         ) : (
           <>
-            {folders.length === 0 ? <div>No folders configured.</div> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {folders.map(f => (
-                  <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 8, borderRadius: 6, background: 'rgba(0,0,0,0.2)' }}>
-                    <input type="checkbox" checked={!!f.active} onChange={() => toggleActive(f.id)} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600 }}>{f.name}</div>
-                      <div style={{ color: 'var(--progress_grey)', fontSize: 12, marginTop: 2 }}>{f.path}</div>
+            {folders.length === 0 ? (
+              <div className="no-folders">No folders configured.</div>
+            ) : (
+              <div className="folders-list">
+                {folders.map(f => {
+                  const rowClass = f.active ? 'folder-row active' : 'folder-row';
+                  return (
+                    <div
+                      key={f.id}
+                      className={rowClass}
+                      role="button"
+                      aria-pressed={!!f.active}
+                      tabIndex={0}
+                      onClick={() => toggleActive(f.id)}
+                      onKeyDown={(e) => handleRowKeyDown(e, f.id)}
+                    >
+                      <div className="folder-main">
+                        <div className="folder-name">{f.name}</div>
+                        <div className="folder-path">{f.path}</div>
+                      </div>
+
+                      <div className="folder-meta">
+                        <div className="folder-count">{typeof f.count === 'number' ? `${f.count} video${f.count === 1 ? '' : 's'}` : '-'}</div>
+                        <div className="folder-size">{typeof f.formattedSize === 'string' ? f.formattedSize : '-'}</div>
+                      </div>
+
+                      <button
+                        className="btn classic folder-remove"
+                        onClick={(e) => { e.stopPropagation(); deleteFolder(f.id); }}
+                        aria-label={`Remove folder ${f.name}`}
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <div style={{ color: 'var(--progress_grey)', fontSize: 13 }}>{f.count ?? '-'}</div>
-                    <button className="btn classic" onClick={() => deleteFolder(f.id)}>Remove</button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
         )}
       </div>
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
-        <button className="btn submit" onClick={saveActive} disabled={saving}>{saving ? 'Saving...' : 'Save & Apply'}</button>
+      <div className="settings-actions">
+        <button className="btn submit" onClick={saveActive} disabled={saving}>
+          {saving ? 'Saving...' : 'Save & Apply'}
+        </button>
         <button className="btn classic" onClick={fetchFolders}>Refresh</button>
       </div>
     </div>

@@ -12,7 +12,7 @@ const DOUBLE_TAP_DELAY_MS = 300; // ms between taps to count as double tap
 const DOUBLE_TAP_SKIP_SECONDS = 10; // seconds per double-tap
 const SKIP_INDICATOR_DURATION = 800; // ms to show skip overlay
 const VERTICAL_DRAG_THRESHOLD = 10; // px to start vertical volume drag
-const CONTROLS_HIDE_MS = 5000; // auto-hide controls after 5s of inactivity
+const CONTROLS_HIDE_MS = 2500; // auto-hide controls after 5s of inactivity
 
 const VideoPlayer = () => {
   const { fileName: rawFileName } = useParams();
@@ -655,7 +655,7 @@ const VideoPlayer = () => {
         ref={subtitleInputRef}
         type="file"
         accept=".vtt,.srt,text/vtt,text/plain"
-        style={{ display: 'none' }}
+        className="hidden-file-input"
         onChange={onSubtitleFileInput}
       />
 
@@ -708,21 +708,7 @@ const VideoPlayer = () => {
 
           {/* Skip indicator */}
           {skipIndicator.visible && (
-            <div
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                background: 'rgba(0,0,0,0.6)',
-                color: 'white',
-                padding: '8px 12px',
-                borderRadius: 8,
-                zIndex: 9999,
-                fontSize: 18,
-                pointerEvents: 'none'
-              }}
-            >
+            <div className="skip-indicator">
               {skipIndicator.text}
             </div>
           )}

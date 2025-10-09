@@ -1,10 +1,24 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import VideoPreview from '../components/VideoPreview';
 import { FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 import { FileContext } from '../components/FileContext';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import '../styling/VideoGrid.css';
 import { API_BASE } from '../utils/api';
+
+const LOAD_COUNT = 15;
+
+const normalizeToEncodedStrings = (arr) => {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => {
+    if (typeof item === 'string') return item;
+    if (item && typeof item === 'object') {
+      if (item.fileName) return item.fileName;
+      if (item.encodedName) return item.encodedName;
+    }
+    return String(item);
+  });
+};
 
 const FileList = ({ isHome }) => {
   const {
@@ -22,48 +36,94 @@ const FileList = ({ isHome }) => {
   const pageParam = parseInt(searchParams.get('page')) || 1;
   const [page, setPage] = useState(isHome ? 1 : pageParam);
 
-  const LOAD_COUNT = 15;
-
-  const fetchPage = (currentPage) => {
+  const fetchPage = useCallback(async (currentPage) => {
     const offset = (currentPage - 1) * LOAD_COUNT;
-
     setLoading(true);
 
-    // ✅ Only reshuffle if no cached list exists
-    if (shuffledCache.length === 0) {
-      fetch(`${API_BASE}/files?offset=${offset}&limit=${LOAD_COUNT}&reshuffle=true`)
-        .then(res => res.json())
-        .then(data => {
-          setAllCount(data.total);
-          setShuffledCache(data.fullList); // Save reshuffled list globally
-          setVisibleFiles(data.fullList.slice(offset, offset + LOAD_COUNT));
-          setHasFetched(true);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error('Error loading files:', err);
-          setLoading(false);
-        });
-    } else {
-      // ✅ Use existing cache for consistent video order
-      setVisibleFiles(shuffledCache.slice(offset, offset + LOAD_COUNT));
+    try {
+      if (Array.isArray(shuffledCache) && shuffledCache.length > 0) {
+        const encodedCache = normalizeToEncodedStrings(shuffledCache);
+        if (!allCount || allCount === 0) setAllCount(encodedCache.length);
+        setVisibleFiles(encodedCache.slice(offset, offset + LOAD_COUNT));
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/files?offset=${offset}&limit=${LOAD_COUNT}&reshuffle=true`);
+      const data = await res.json();
+      const fullListRaw = data.fullList || data.files || [];
+      const fullList = normalizeToEncodedStrings(fullListRaw);
+
+      setShuffledCache(fullList);
+      setAllCount(data.total || fullList.length || 0);
+
+      const slice = fullList.slice(offset, offset + LOAD_COUNT);
+      setVisibleFiles(slice);
+      setHasFetched(true);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error loading files (FileList):', err);
+      try {
+        const fallback = await fetch(`${API_BASE}/allfiles`);
+        const fallData = await fallback.json();
+        const fullList = normalizeToEncodedStrings(fallData || []);
+        setShuffledCache(fullList);
+        setAllCount(fullList.length);
+        const offset = (page - 1) * LOAD_COUNT;
+        setVisibleFiles(fullList.slice(offset, offset + LOAD_COUNT));
+      } catch (err2) {
+        console.error('Fallback /allfiles failed:', err2);
+        setVisibleFiles([]);
+        setAllCount(0);
+      }
       setLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shuffledCache, setShuffledCache, setVisibleFiles, setAllCount, setHasFetched]);
 
+  // react to page/url changes
   useEffect(() => {
-    if (isHome) {
-      setPage(1);
-    } else {
-      setPage(pageParam);
-    }
+    if (isHome) setPage(1);
+    else setPage(pageParam);
   }, [location.pathname, isHome, pageParam]);
 
   useEffect(() => {
     fetchPage(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const totalPages = Math.ceil(allCount / LOAD_COUNT);
+  // Listen to global updates (from Settings or other tabs) and refetch
+  useEffect(() => {
+    let bc;
+    try {
+      bc = new BroadcastChannel('app_updates');
+      bc.onmessage = (e) => {
+        if (e.data && e.data.type === 'foldersChanged') {
+          // clear cache and re-fetch current page
+          try { setShuffledCache([]); } catch (err) {}
+          fetchPage(page);
+        }
+      };
+    } catch (err) {
+      // BroadcastChannel not available — no-op
+      bc = null;
+    }
+
+    // Also listen for a custom DOM event fallback
+    const handler = () => {
+      try { setShuffledCache([]); } catch (err) {}
+      fetchPage(page);
+    };
+    window.addEventListener('app_folders_changed', handler);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('app_folders_changed', handler);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, fetchPage, setShuffledCache]);
+
+  const totalPages = Math.max(1, Math.ceil((allCount || 0) / LOAD_COUNT));
 
   const getPageNumbers = () => {
     const pages = [];
@@ -71,23 +131,19 @@ const FileList = ({ isHome }) => {
     let start = Math.max(page - 2, 1);
     let end = Math.min(start + maxDisplay - 1, totalPages);
 
-    if (end - start < maxDisplay - 1) {
-      start = Math.max(end - maxDisplay + 1, 1);
-    }
+    if (end - start < maxDisplay - 1) start = Math.max(end - maxDisplay + 1, 1);
 
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
+    for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   };
 
   const goToPage = (newPage) => {
-    if (newPage === 1) {
-      navigate('/');
-    } else {
-      navigate(`/videos?page=${newPage}`);
-    }
+    if (newPage === 1) navigate('/');
+    else navigate(`/videos?page=${newPage}`);
   };
+
+  const startIndex = (allCount && allCount > 0) ? ((page - 1) * LOAD_COUNT + 1) : (visibleFiles.length > 0 ? ((page - 1) * LOAD_COUNT + 1) : 0);
+  const endIndex = (allCount && allCount > 0) ? Math.min(page * LOAD_COUNT, allCount) : (visibleFiles.length ? ((page - 1) * LOAD_COUNT + visibleFiles.length) : 0);
 
   if (loading) {
     return (
@@ -101,6 +157,17 @@ const FileList = ({ isHome }) => {
   return (
     <>
       <div className="mainContainer">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+          <h2 style={{ marginBottom: 6 }}>{isHome ? 'Home' : 'All videos'}</h2>
+          <div style={{ color: 'var(--progress_grey)', fontSize: 13 }}>
+            {allCount || 0} result{(allCount || 0) === 1 ? '' : 's'}
+          </div>
+        </div>
+
+        <div style={{ color: 'var(--progress_grey)', marginBottom: 12, fontSize: 13 }}>
+          {(allCount || visibleFiles.length) > 0 ? `Showing ${startIndex}–${endIndex} of ${allCount || visibleFiles.length}` : 'No videos found'}
+        </div>
+
         <div className="subContainer">
           {visibleFiles.map((file, index) => (
             <VideoPreview key={index} file={file} />
@@ -108,7 +175,6 @@ const FileList = ({ isHome }) => {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-
           <button onClick={() => goToPage(1)} disabled={page === 1} className='btn btnWrapper'>
             <FaAngleDoubleLeft /> First
           </button>
@@ -130,7 +196,6 @@ const FileList = ({ isHome }) => {
           <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className='btn btnWrapper'>
             Last <FaAngleDoubleRight />
           </button>
-
         </div>
       </div>
     </>

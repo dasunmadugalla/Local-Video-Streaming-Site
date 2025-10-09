@@ -1,0 +1,139 @@
+/* Settings.css - styles for Settings page */
+.settings-container {
+  padding-bottom: 2rem;
+}
+
+/* Intro text */
+.settings-intro p {
+  margin: 0;
+}
+.settings-tip {
+  margin-top: 6px;
+  color: var(--progress_grey);
+  font-size: 13px;
+}
+
+/* Input area */
+.settings-input-area {
+  border: 2px dashed rgba(255,255,255,0.06);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.01);
+}
+
+.settings-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.settings-add-btn {
+  min-width: 90px;
+}
+
+/* message */
+.settings-message {
+  margin-top: 8px;
+  color: var(--secondary_color);
+  font-size: 13px;
+}
+
+/* folders panel */
+.folders-panel {
+  background: rgba(255,255,255,0.02);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+/* loading / no folders */
+.loading-text,
+.no-folders {
+  color: var(--progress_grey);
+}
+
+/* folder list */
+.folders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.folder-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.16);
+  border: 1px solid rgba(255,255,255,0.02);
+  cursor: pointer;
+  transition: background 120ms ease, border 120ms ease;
+  user-select: none;
+}
+
+.folder-row:hover {
+  transform: translateY(-1px);
+}
+
+.folder-row.active {
+  background: rgba(225,16,31,0.10);
+  border: 1px solid rgba(225,16,31,0.25);
+}
+
+/* folder main text */
+.folder-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-path {
+  color: var(--progress_grey);
+  font-size: 12px;
+  margin-top: 4px;
+  opacity: 0.9;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* meta */
+.folder-meta {
+  text-align: right;
+  min-width: 120px;
+  color: var(--progress_grey);
+  font-size: 13px;
+  margin-right: 8px;
+}
+.folder-count {}
+.folder-size { margin-top: 4px; }
+
+/* remove button */
+.folder-remove {
+  margin-left: 0;
+}
+
+/* actions */
+.settings-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+}

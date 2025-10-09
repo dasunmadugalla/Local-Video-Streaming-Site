@@ -19,7 +19,7 @@
 }
 
 /* === videoBoxWrapper (Outer Most Div) === */
- .videoBoxWrapper {
+.videoBoxWrapper {
   display: flex;
   flex-direction: column;
   cursor: pointer;
@@ -27,17 +27,18 @@
 }
 
 /* === videoBox (Wrapper Around Link & Video) === */
- .videoBox {
+.videoBox {
   position: relative;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   background: #1B1B1B;
   width: 100%;
+  overflow: hidden; /* ensure the video is cropped to the thumbnail area */
 }
 
 /* === videoLink (Link Wrapper) === */
- .videoLink {
+.videoLink {
   width: 100%;
   height: 100%;
   display: flex;
@@ -45,10 +46,20 @@
   align-items: center;
 }
 
-/* === video (Video Itself) === */
- .videoBox video {
+/* === videoInner / videoElm ===
+   videoInner is the positioned wrapper that matches thumbnail height,
+   videoElm is the <video> element that fills the wrapper exactly. */
+.videoBox .videoInner {
+  position: relative;
   width: 100%;
-  height: 15em;
+  height: 15em; /* thumbnail height (keeps previous look) */
+  display: block;
+}
+
+.videoBox .videoInner .videoElm {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   background-position: center;
 }
@@ -69,9 +80,10 @@
   transition: color 0.5s ease;
 }
 
-.videoBoxWrapper:hover  .title{
+.videoBoxWrapper:hover .title {
   color: white;
 }
+
 .toast-notification {
   position: fixed;
   top: 20px;
@@ -90,9 +102,65 @@
   font-size: 12px;
   animation: fadein 0.3s ease, fadeout 0.3s ease 3.7s;
 }
-.indicateCircle{
+
+.indicateCircle {
   font-size: 8px;
   color: rgb(11, 229, 77);
+}
+
+/* top-right resolution badge */
+.videoQualityOverlay {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 0px; /* you set 0 — keep it; change to 6px if you prefer rounded */
+  background: #ECFF31; /* requested color */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* resolution text color — use dark text so it's readable on the bright yellow */
+.videoQualityOverlay .videoQuality {
+  color: #000;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* bottom-right duration badge */
+.videoDurationOverlay {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* responsive tweaks */
+@media (max-width: 500px) {
+  .videoBox .videoInner { height: 12.5em; } /* slightly smaller on small screens */
+  .videoQualityOverlay, .videoDurationOverlay {
+    padding: 3px 6px;
+    font-size: 10px;
+    border-radius: 5px;
+  }
+
+  .subContainer {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Optional: smooth fade-in and fade-out animation */
@@ -104,11 +172,4 @@
 @keyframes fadeout {
   from { opacity: 1; transform: translateY(0); }
   to   { opacity: 0; transform: translateY(10px); }
-}
-
-/* For screens up to 600px (mobile) */
-@media (max-width: 500px) {
-  .subContainer {
-    grid-template-columns: 1fr;
-  }
 }

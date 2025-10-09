@@ -1,5 +1,8 @@
+// src/components/VideoGrid.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { FaCheckSquare, FaSquare } from 'react-icons/fa';
+
+const TRUNCATE_LIMIT = 40;
 
 const VideoGrid = ({
   files,
@@ -43,6 +46,7 @@ const VideoGrid = ({
       const newlySelected = [];
 
       Object.entries(rowRefs.current).forEach(([key, el]) => {
+        if (!el) return;
         const rect = el.getBoundingClientRect();
         const midY = rect.top + rect.height / 2;
         if (midY >= minY && midY <= maxY) {
@@ -77,6 +81,19 @@ const VideoGrid = ({
     }
   };
 
+  const decodeDisplayName = (encoded) => {
+    if (!encoded) return '';
+    if (encoded.includes('::')) {
+      return encoded.split('::').slice(1).join('::');
+    }
+    return encoded;
+  };
+
+  const truncated = (name) => {
+    if (!name) return '';
+    return name.length > TRUNCATE_LIMIT ? (name.slice(0, TRUNCATE_LIMIT) + '...') : name;
+  };
+
   return (
     <div
       ref={containerRef}
@@ -93,8 +110,8 @@ const VideoGrid = ({
             top: dragBox.top,
             width: dragBox.width,
             height: dragBox.height,
-            backgroundColor: 'rgba(0, 123, 255, 0.2)',
-            border: '1px solid #007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.12)',
+            border: '1px solid rgba(0, 123, 255, 0.6)',
             zIndex: 9999,
             pointerEvents: 'none',
           }}
@@ -111,7 +128,11 @@ const VideoGrid = ({
       </div>
 
       {files.map((file) => {
-        const fileKey = file.fileName;
+        // file.fileName is expected to be encoded: "folderId::realFilename.ext"
+        const encodedName = file.fileName || file; // fallback if file is a string
+        const fileKey = encodedName;
+        const displayName = decodeDisplayName(encodedName);
+        const shortName = truncated(displayName);
         const isSelected = selectedHashes.includes(fileKey);
 
         return (
@@ -123,7 +144,7 @@ const VideoGrid = ({
               if (selectMode) {
                 toggleSelection(fileKey);
               } else {
-                openTitleModal(file.fileName);
+                openTitleModal(fileKey);
               }
             }}
             style={{ cursor: selectMode ? 'pointer' : 'default' }}
@@ -133,8 +154,8 @@ const VideoGrid = ({
                 {isSelected ? <FaCheckSquare /> : <FaSquare />}
               </div>
             )}
-            <div>
-              {file.fileName.length > 40 ? file.fileName.slice(0, 40) + '...' : file.fileName}
+            <div title={displayName}>
+              {shortName}
             </div>
             <div>{file.formattedSize}</div>
             {Object.keys(tagCategories).map(cat => (
@@ -150,124 +171,3 @@ const VideoGrid = ({
 };
 
 export default VideoGrid;
-
-
-// import React, { useRef, useState, useEffect } from 'react';
-// import { FaCheckSquare, FaSquare } from 'react-icons/fa';
-
-// const VideoGrid = ({
-//   files,
-//   tagCategories,
-//   openTitleModal,
-//   selectMode,
-//   selectedHashes = [],
-//   setSelectedHashes = () => {}
-// }) => {
-//   const rowRefs = useRef({});
-//   const [isDragging, setIsDragging] = useState(false);
-//   const startY = useRef(0);
-//   const endY = useRef(0);
-
-//   useEffect(() => {
-//     const handleMouseMove = (e) => {
-//       if (isDragging) {
-//         endY.current = e.clientY;
-//       }
-//     };
-
-//     const handleMouseUp = () => {
-//       if (!isDragging) return;
-
-//       const [minY, maxY] = [startY.current, endY.current].sort((a, b) => a - b);
-//       const newlySelected = [];
-
-//       Object.entries(rowRefs.current).forEach(([key, el]) => {
-//         const rect = el.getBoundingClientRect();
-//         const midY = rect.top + rect.height / 2;
-//         if (midY >= minY && midY <= maxY) {
-//           newlySelected.push(key);
-//         }
-//       });
-
-//       setSelectedHashes(prev => [...new Set([...prev, ...newlySelected])]);
-//       setIsDragging(false);
-//     };
-
-//     window.addEventListener('mousemove', handleMouseMove);
-//     window.addEventListener('mouseup', handleMouseUp);
-//     return () => {
-//       window.removeEventListener('mousemove', handleMouseMove);
-//       window.removeEventListener('mouseup', handleMouseUp);
-//     };
-//   }, [isDragging, setSelectedHashes]);
-
-//   const handleMouseDown = (e) => {
-//     if (!selectMode) return;
-//     setIsDragging(true);
-//     startY.current = e.clientY;
-//     endY.current = e.clientY;
-//   };
-
-//   const toggleSelection = (fileKey) => {
-//     if (selectedHashes.includes(fileKey)) {
-//       setSelectedHashes(selectedHashes.filter(k => k !== fileKey));
-//     } else {
-//       setSelectedHashes([...selectedHashes, fileKey]);
-//     }
-//   };
-
-//   return (
-//     <div
-//       className="videoContainer"
-//       onMouseDown={handleMouseDown}
-//       style={{ userSelect: 'none' }}
-//     >
-//       <div className="gridHeader">
-//         {selectMode && <div>Select</div>}
-//         <div>File Name</div>
-//         <div>Size</div>
-//         {Object.keys(tagCategories).map(cat => (
-//           <div key={cat}>{cat} Tags</div>
-//         ))}
-//       </div>
-
-//       {files.map((file) => {
-//         const fileKey = file.fileName;
-//         const isSelected = selectedHashes.includes(fileKey);
-
-//         return (
-//           <div
-//             className={`gridRow ${isSelected ? 'selectedRow' : ''}`}
-//             key={fileKey}
-//             ref={el => rowRefs.current[fileKey] = el}
-//             onClick={() => {
-//               if (selectMode) {
-//                 toggleSelection(fileKey);
-//               } else {
-//                 openTitleModal(file.fileName);
-//               }
-//             }}
-//             style={{ cursor: selectMode ? 'pointer' : 'default' }}
-//           >
-//             {selectMode && (
-//               <div className="checkboxCell">
-//                 {isSelected ? <FaCheckSquare /> : <FaSquare />}
-//               </div>
-//             )}
-//             <div>
-//               {file.fileName.length > 40 ? file.fileName.slice(0, 40) + '...' : file.fileName}
-//             </div>
-//             <div>{file.formattedSize}</div>
-//             {Object.keys(tagCategories).map(cat => (
-//               <div key={cat}>
-//                 {(file.tags && file.tags[cat]) ? file.tags[cat].join(', ') : ''}
-//               </div>
-//             ))}
-//           </div>
-//         );
-//       })}
-//     </div>
-//   );
-// };
-
-// export default VideoGrid;

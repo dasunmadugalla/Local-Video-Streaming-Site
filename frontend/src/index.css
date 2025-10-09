@@ -10,3 +10,13 @@
 @import '../src/styling/Library.css';
 @import '../src/styling/SearchResults.css';
 /* @import '../src/styling//PageNotFound.css'; */
+
+@font-face {
+  font-family: 'onest'; /* A name you choose */
+  src: url('./fonts/Onest-VariableFont_wght.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+*{
+    font-family: onest !important;
+}

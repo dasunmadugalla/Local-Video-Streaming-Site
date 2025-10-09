@@ -41,9 +41,9 @@
 
 .custom-player video {
   position: absolute;
-  /* max-height: 80vh; */
-  /* max-height: 100%; */
+  width: 100%;
   height: 100%;
+  object-fit: contain;
   background: black;
 }
 
@@ -56,6 +56,7 @@
 }
 
 /* ==== Controls Wrapper ==== */
+/* Controls base - visible state (JS will toggle .controls-hidden) */
 .controls {
   position: absolute;
   bottom: 0;
@@ -64,15 +65,41 @@
   box-sizing: border-box;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
   color: white;
-  transform: translateY(100%);
-  transition: transform 0.4s ease;
+
+  /* visible by default; JS will add .controls-hidden to hide */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease, transform 700ms ease;
+  transition-delay: 0s, 0s; /* show immediately when revealed by JS */
+  pointer-events: auto;
+  z-index: 1000;
+}
+
+/* Hidden state */
+.controls-hidden {
+  opacity: 0;
+  transform: translateY(80%);
+  pointer-events: none; /* prevents accidental clicks while hidden */
+  /* You can add a small hide delay here if you want the hide to wait after the class is added:
+     transition-delay: 0.0s, 0.0s;  (we keep 0 so JS timer controls timing) */
 }
 
 .custom-player:hover .controls {
-  transform: translate(0);
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0s, 0s; /* show immediately */
 }
 
-/* ==== Progress Bar ==== */
+/* delay hiding when cursor leaves */
+.custom-player:not(:hover) .controls {
+  /* delay hide by 400ms (change as you like) */
+  transition-delay: 0.4s, 0.4s;
+  opacity: 0;
+  transform: translateY(80%);
+  pointer-events: none;
+}
+
+/* ==== Progress Bar (shared for progress & other ranges) ==== */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -129,11 +156,11 @@ input.progressBar {
   width: 100%;
 }
 
-/* Hover Preview */
+/* ==== Hover Preview ==== */
 .hover-preview {
   position: absolute;
   bottom: 5em;
-  transform: translate(-25%,-50%);
+  transform: translate(-25%, -50%);
   background: var(--preview_color);
   color: white;
   font-size: 12px;
@@ -166,31 +193,20 @@ input.progressBar {
 }
 
 .controls-row button {
-  margin: 0 0px;
+  margin: 0;
   background: none;
   border: none;
   color: white;
-  /* background-color: lightblue; */
-  font-size:  16px !important;
+  font-size: 16px !important;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-/* Left Controllers */
-.leftControllers {
-  position: relative;
-  left: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Right Controllers */
+/* Left & Right Controllers */
+.leftControllers,
 .rightControllers {
-  position: relative;
-  right: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -203,12 +219,9 @@ input.progressBar {
   justify-content: center;
   align-items: center;
 }
+.volume-control { gap: 0; }
 
-.volume-control {
-  gap: 0;
-}
-
-/* ==== Volume Bar ==== */
+/* ==== Volume Bar specifics ==== */
 input.volumeBar {
   width: 0;
   visibility: hidden;
@@ -264,7 +277,7 @@ input.volumeBar::-moz-range-progress {
   border-radius: 5px;
 }
 
-/* Volume Indicator */
+/* ==== Volume Indicator ==== */
 .volume-indicator {
   position: absolute;
   top: 50%;
@@ -276,12 +289,26 @@ input.volumeBar::-moz-range-progress {
   background: rgba(0, 0, 0, 0.6);
   color: white;
   border-radius: 5px;
-  padding: 15px 20px;
-  /* height: 4em; */
-  /* width: 4em; */
+  height: 3em;
+  width: 4em;
   font-size: 18px;
   pointer-events: none;
   z-index: 5;
+}
+
+/* ==== Skip indicator ==== */
+.skip-indicator {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 9999;
+  font-size: 18px;
+  pointer-events: none;
 }
 
 /* ==== Actions Row ==== */
@@ -289,42 +316,39 @@ input.volumeBar::-moz-range-progress {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0px 0;
+  padding: 0;
 }
 
 /* ==== Next Previews ==== */
 .nextPreviews {
   gap: 2.5rem 10px;
 }
-/* buffering overlay + spinner */
-.custom-player {
-  position: relative; /* ensure overlay positions correctly */
-}
 
+/* ==== Buffering overlay + spinner ==== */
 .buffering-overlay {
   position: absolute;
-  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none; /* allow clicks to pass to controls */
+  pointer-events: none;
   z-index: 9998;
-  background: rgba(0, 0, 0, 0.12); /* slight dim while buffering */
+  background: rgba(0, 0, 0, 0.12);
   transition: opacity 180ms ease;
 }
 
-/* spinner ring */
+/* spinner ring (primary) */
 .buffering-spinner {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 5px solid rgb(133, 133, 133);
-  border-top-color: var(--secondary_color, #E1031F);
-  animation: buffering-spin 1s linear infinite;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  border: 5px solid rgba(255,255,255,0.08);
+  border-top-color: rgba(255,255,255,0.7);
+  animation: spin 1s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* slightly smaller spinner for mobile if you want */
+/* alternative spinner styling (smaller) */
 @media (max-width: 420px) {
   .buffering-spinner {
     width: 36px;
@@ -333,18 +357,25 @@ input.volumeBar::-moz-range-progress {
   }
 }
 
-@keyframes buffering-spin {
-  to { transform: rotate(360deg); }
+/* Slightly different previous spinner variant kept for compatibility */
+@keyframes buffering-spin { to { transform: rotate(360deg); } }
+
+/* ==== Hidden file input (subtitles) ==== */
+.hidden-file-input { display: none; }
+
+/* ==== Small responsive tweaks ==== */
+@media (max-width: 900px) {
+  .custom-player { min-height: 60vh; }
+  .volume-indicator { height: 3.2em; width: 3.2em; font-size: 14px; }
+  .skip-indicator { font-size: 16px; padding: 6px 10px; }
 }
 
-/* Hide/transform class for controls when inactive */
-.controls {
-  transition: opacity 220ms ease, transform 700ms ease;
-  /* keep existing layout rules intact */
-}
+/* player controls layout spacing */
+.controls .controls-row { padding: 8px 6px; }
+/* ensure progress bar sits nicely */
+.controls .progress-wrapper { padding: 8px 6px 0 6px; }
 
-.controls-hidden {
-  opacity: 0;
-  transform: translateY(80) /*scale(0.995)*/;
-  pointer-events: none; /* prevents accidental clicks while hidden */
-}
+/* minor layout niceties retained from older file */
+.hover-preview { bottom: 5em; }
+
+/* Nothing else duplicate — feel free to tweak spacing or font-sizes here */
