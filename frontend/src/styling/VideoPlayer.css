@@ -127,7 +127,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 10px;
   width: 10px;
   border-radius: 50%;
-  background: white;
+  background: rgb(255, 255, 255);
   position: relative;
   z-index: 2;
 }
@@ -235,15 +235,15 @@ input.volumeBar {
   );
   background-repeat: no-repeat;
   background-size: 100% 100%;
-  height: 4px;
-  border-radius: 5px;
+  height: 3px;
+  /* border-radius: 5px; */
   cursor: pointer;
   transition-duration: 0.5s;
 }
-
+.controls:hover  input.volumeBar,
 .volumeBtn:hover ~ input.volumeBar,
 input.volumeBar:hover {
-  width: 80px;
+  width: 50px;
   visibility: visible;
 }
 
@@ -252,14 +252,14 @@ input.volumeBar::-webkit-slider-thumb {
   height: 10px;
   width: 10px;
   border-radius: 50%;
-  background: white;
+  background: rgb(255, 255, 255);
   position: relative;
   z-index: 2;
 }
 
 input.volumeBar::-moz-range-thumb {
-  height: 10px;
-  width: 10px;
+  height: 12px;
+  width: 12px;
   border-radius: 50%;
   background: white;
   border: none;
@@ -379,3 +379,215 @@ input.volumeBar::-moz-range-progress {
 .hover-preview { bottom: 5em; }
 
 /* Nothing else duplicate — feel free to tweak spacing or font-sizes here */
+/* Layout root */
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  user-select: none;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color: #fff;
+}
+
+/* Left cluster */
+.leftControllers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Buttons */
+.btn {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 16px;
+}
+
+
+/* Specific sizes */
+.playBtn {
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.03);
+}
+
+/* small variant */
+.small {
+  padding: 6px 8px;
+  font-size: 13px;
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* control button smaller padding for left/right */
+.controlBtn {
+  padding: 8px;
+}
+
+/* screen button */
+.screenBtn {
+  padding: 8px;
+}
+
+/* Volume control */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volumeBtn {
+  padding: 8px;
+}
+
+/* Range input styling — use CSS variable --volume-percent set on the element */
+.volumeBar {
+  width: 100px;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 6px;
+  background:
+    linear-gradient(to right, rgba(255,255,255,0.95) var(--volume-percent, 50%), rgba(255,255,255,0.08) var(--volume-percent, 50%));
+  outline: none;
+}
+
+/* Thumb */
+.volumeBar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 1px rgba(0,0,0,0.6);
+  cursor: pointer;
+}
+.volumeBar::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+/* Right cluster */
+.rightControllers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+/* time text */
+.timeDisplay {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+/* speed label inside button */
+.speedLabel {
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+/* popup menu (shared) */
+.popupMenu {
+  position: absolute;
+  bottom: calc(100% + 25px);
+  /* right: 0; */
+  background: rgba(10,10,10,0.75);
+  backdrop-filter: blur(5x);
+  color: white;
+  border-radius: 3.5px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  z-index: 9999;
+  min-width: 85px;
+}
+
+/* wider CC menu */
+.ccMenu {
+  min-width: 160px;
+}
+
+/* menu column */
+.ccColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* menu item */
+.menuItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 6px 0px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px !important;
+  text-align: left;
+}
+.menuItem_txt{
+  font-size: 12px;
+}
+/* selected menu item style (speed selected) */
+.menuItem--selected {
+  background-color: var(--color-secondary) !important;
+  color: #ffffff;
+}
+
+/* if you want the text to stand out more */
+.menuItem--selected .menuItem_txt {
+  font-weight: 700;
+}
+
+/* subtle hover */
+.menuItem:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+/* cc button border bottom when enabled */
+.ccBtn {
+  border-bottom: 3px solid transparent;
+  transition: border-bottom-color 160ms linear;
+}
+.ccBtn.cc-enabled {
+  border-bottom-color: #e33;
+}
+
+/* subtitle label text */
+.subtitleLabel {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #ccc;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  margin-top: 6px;
+  word-break: break-all;
+}
+
+/* small responsive adjustments (optional) */
+@media (max-width: 520px) {
+  .volumeBar { width: 70px; }
+  .controls-row { gap: 8px; padding: 6px; }
+  .timeDisplay { display: none; }
+}

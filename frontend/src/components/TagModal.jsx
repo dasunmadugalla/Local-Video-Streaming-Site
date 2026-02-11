@@ -2,15 +2,32 @@
 import React from 'react';
 import { FaTimes } from 'react-icons/fa';
 
-const TagModal = ({ titleInput, setTitleInput, tagCategories, tagInputs, setTagInputs, removeTag, onSave, onClose }) => (
+const TagModal = ({
+  titleInput,
+  setTitleInput,
+  tagCategories,
+  tagInputs,
+  setTagInputs,
+  removeTag,
+  onSave,
+  onClose,
+  showTitle = true,
+  modalTitle = ''
+}) => (
   <div className="videoTitleModal">
-    <label>Title:</label>
-    <input
-      type="text"
-      placeholder="Enter Video Title"
-      value={titleInput}
-      onChange={e => setTitleInput(e.target.value)}
-    />
+    {modalTitle ? <h3>{modalTitle}</h3> : null}
+
+    {showTitle && (
+      <>
+        <label>Title:</label>
+        <input
+          type="text"
+          placeholder="Enter Video Title"
+          value={titleInput}
+          onChange={e => setTitleInput(e.target.value)}
+        />
+      </>
+    )}
 
     {Object.keys(tagCategories).map(cat => (
       <div key={cat} className="tagInputWrapper">

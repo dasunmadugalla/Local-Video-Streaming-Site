@@ -10,7 +10,8 @@ const VideoGrid = ({
   openTitleModal,
   selectMode,
   selectedHashes = [],
-  setSelectedHashes = () => {}
+  setSelectedHashes = () => {},
+  onSelectedRightClick = null
 }) => {
   const rowRefs = useRef({});
   const containerRef = useRef(null);
@@ -143,11 +144,18 @@ const VideoGrid = ({
             onClick={() => {
               if (selectMode) {
                 toggleSelection(fileKey);
-              } else {
-                openTitleModal(fileKey);
               }
             }}
-            style={{ cursor: selectMode ? 'pointer' : 'default' }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (selectMode && isSelected && typeof onSelectedRightClick === 'function') {
+                onSelectedRightClick(fileKey);
+                return;
+              }
+
+              openTitleModal(fileKey);
+            }}
+            style={{ cursor: selectMode ? 'pointer' : 'context-menu' }}
           >
             {selectMode && (
               <div className="checkboxCell">

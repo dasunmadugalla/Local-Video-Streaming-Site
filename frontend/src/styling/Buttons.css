@@ -1,7 +1,7 @@
 .btn {
   border-radius: 5px;
-  padding: 5px 10px;
-  font-size: 12px;
+  padding: 7.5px !important;
+  font-size: 12px !important;
   outline: none;
   cursor: pointer;
   text-align: center;
@@ -20,7 +20,8 @@
 }
 
 .btn:hover {
-  background-color: rgb(42, 42, 42);
+  border: 0.5px solid white !important;
+  color: white !important;
 }
 .btn.submit:hover{
   background-color: #dcdcdc;
@@ -35,10 +36,15 @@
 }
 
 .btn.activePage {
-  background-color: #333;
-  color: white;
+  /* background-color: #333; */
+  color: var(--color-secondary) !important;
+  border: 1.5px solid var(--color-secondary) !important;
   font-weight: bold;
 }
+.btn.activePage:hover{
+ background-color: transparent !important;
+}
+
 .subContainer {
   display: flex;
   flex-wrap: wrap;
@@ -46,53 +52,27 @@
   animation: fadeIn 0.4s ease;
 }
 /* ==== Search Bar ==== */
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  max-width: 400px;
-  margin: 0 auto;
-}
 
-.search-input {
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: 5px;
-  border: 1px solid rgb(58, 58, 58);
-  background: rgb(16, 16, 16);
-  color: white;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
-}
+.cstmbtn{
+  /* color: red; */
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  /* background-color: rgba(24, 24, 24, 0.2) !important; */
+  margin: 0;
+  padding: 0px;
+  font-size: 14px !important;
+  color: rgb(78, 78, 78) !important;
+  border: 0.5px solid rgb(78, 78, 78) !important;
+  
 
-.search-input:focus {
-  border-color: var(--secondary_color, #E1031F);
-  background-color: rgb(24, 24, 24);
 }
-
-.search-btn {
-  padding: 8px 14px;
-  border-radius: 5px;
-  border: 1px solid rgb(58, 58, 58);
-  background: rgb(16, 16, 16);
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+.pgctrl{
+  background-color: transparent !important;
 }
-
-.search-btn:hover {
-  background-color: rgb(42, 42, 42);
+.pgctrl:hover{
+  border: none !important;
 }
-
-.search-btn:active {
-  background-color: var(--secondary_color, #E1031F);
-  border-color: var(--secondary_color, #E1031F);
-}
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }

@@ -1,12 +1,12 @@
-// src/App.jsx
+
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import FileList from './pages/FileList';
 import VideoPlayer from './pages/VideoPlayer';
 import PageNotFount from './pages/PageNotFount';
 import { FileProvider } from './components/FileContext';
-import logo from './assets/BlackedRaw.jpg';
-import { FaUserCircle, FaCircle } from 'react-icons/fa';
+import logo from './assets/logo.png';
+import { FaUserCircle, FaCircle,FaSearch } from 'react-icons/fa';
 import Settings from './pages/Settings';
 import LibraryManager from './pages/LibraryManager';
 import Access from './pages/Access';
@@ -44,6 +44,15 @@ function NavigationBar() {
     navigate(url);
   };
 
+  // determine active link classes using pathname (keeps paginated /videos active)
+  const pathname = location.pathname || '/';
+  const isHomeActive = pathname === '/' || pathname.startsWith('/videos');
+  const isLibraryActive = pathname.startsWith('/library');
+  const isCategoryActive = pathname.startsWith('/category');
+  const isSettingsActive = pathname.startsWith('/settings');
+
+  const navLinkClass = (active) => `navLink${active ? ' active' : ''}`;
+
   return (
     <div className="navigationBar">
       <div className="right">
@@ -52,16 +61,16 @@ function NavigationBar() {
         </Link>
 
         <ul>
-          <li><Link to="/">Home</Link></li>
-          <li><Link to="/library">Library</Link></li>
-          <li><Link to="/category">Category</Link></li>
-          <li><Link to="/settings">Settings</Link></li>
+          <li><Link to="/" className={navLinkClass(isHomeActive)}>Home</Link></li>
+          <li><Link to="/library" className={navLinkClass(isLibraryActive)}>Library</Link></li>
+          <li><Link to="/category" className={navLinkClass(isCategoryActive)}>Category</Link></li>
+          <li><Link to="/settings" className={navLinkClass(isSettingsActive)}>Settings</Link></li>
         </ul>
       </div>
 
       <div className="center">
         {/* Search form */}
-        <form onSubmit={submitSearch} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <form onSubmit={submitSearch} className='searchBar-form'>
           <input
             type="search"
             placeholder="Search videos..."
@@ -69,16 +78,10 @@ function NavigationBar() {
             className='search-input'
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search videos"
-            style={{
-              padding: '6px 10px',
-              borderRadius: 6,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(0,0,0,0.6)',
-              color: 'white',
-              width: 320
-            }}
+            spellCheck="false" 
+
           />
-          <button type="submit" className="btn classic">Search</button>
+          <button type="submit" className="searchBtn"><FaSearch /></button>
         </form>
       </div>
 
@@ -204,3 +207,4 @@ function App() {
 }
 
 export default App;
+ 

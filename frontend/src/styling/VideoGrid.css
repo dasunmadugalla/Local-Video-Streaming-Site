@@ -151,7 +151,10 @@
 
 /* responsive tweaks */
 @media (max-width: 500px) {
-  .videoBox .videoInner { height: 12.5em; } /* slightly smaller on small screens */
+  .videoBox .videoInner { 
+  height: 18em;
+  width: 100%;
+   } /* slightly smaller on small screens */
   .videoQualityOverlay, .videoDurationOverlay {
     padding: 3px 6px;
     font-size: 10px;

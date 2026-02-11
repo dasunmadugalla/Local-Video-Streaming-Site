@@ -5,7 +5,7 @@ import { API_BASE } from '../utils/api';
 
 const PLACEHOLDER_QUALITY = '—'; // visible placeholder while loading
 
-const VideoPreview = React.forwardRef(({ file }, ref) => {
+const VideoPreview = React.forwardRef(({ file, onContextMenu }, ref) => {
   const videoRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [duration, setDuration] = useState(null); // seconds
@@ -117,6 +117,7 @@ const VideoPreview = React.forwardRef(({ file }, ref) => {
         ref={ref}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onContextMenu={onContextMenu}
       >
         <Link to={`/watch/${encodeURIComponent(encodedName)}`} className='videoLink'>
           <div className="videoInner">

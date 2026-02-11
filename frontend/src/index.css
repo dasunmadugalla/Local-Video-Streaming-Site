@@ -17,6 +17,30 @@
   font-weight: normal;
   font-style: normal;
 }
+@font-face {
+  font-family: 'poppins'; /* A name you choose */
+  src: url('./fonts/poppins/Poppins-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --primaryFont: "Open Sans", sans-serif;
+  --color-bg-dark: rgb(16, 16, 16);
+  --color-bg-darker: rgb(0, 0, 0);
+  --color-bg-input: #1c1c1c;
+  --color-border: rgb(58, 58, 58);
+  --color-fontColor: white;
+  --color-light-text: rgb(232, 232, 232);
+  --color-muted-text: rgb(202, 202, 202);
+  --color-popup-success: #45de78;
+  --color-popup-error: #dc3545;
+  --color-popup-warning: #ffd607;
+  --color-secondary: rgb(234, 0, 0);
+  --color-accent:rgb(255, 255, 255);
+}
+/* rgb(16, 16, 16) */
+
 *{
-    font-family: onest !important;
+    font-family: poppins !important;
 }

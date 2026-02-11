@@ -1,24 +1,10 @@
-:root {
-  --primaryFont: "Open Sans", sans-serif;
-  --color-bg-dark: rgb(16, 16, 16);
-  --color-bg-darker: rgb(24, 24, 24);
-  --color-bg-input: #1c1c1c;
-  --color-border: rgb(58, 58, 58);
-  --color-fontColor: white;
-  --color-light-text: rgb(232, 232, 232);
-  --color-muted-text: rgb(202, 202, 202);
-  --color-popup-success: #45de78;
-  --color-popup-error: #dc3545;
-  --color-popup-warning: #ffd607;
-}
-
 html, body, #root {
   margin: 0;
   padding: 0;
   width: 100%;
   /* height: 100vh; */
   box-sizing: border-box;
-  background-color: #000000;
+  background-color: var(--color-bg-darker);
   color: white;
   font-family: var(--primaryFont);
   display: flex;

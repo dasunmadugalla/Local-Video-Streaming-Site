@@ -199,11 +199,11 @@ const VideoPlayer = () => {
           break;
         case 'ArrowRight':
           e.preventDefault();
-          video.currentTime = Math.min(video.currentTime + 10, video.duration);
+          video.currentTime = Math.min(video.currentTime + 5, video.duration);
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          video.currentTime = Math.max(video.currentTime - 10, 0);
+          video.currentTime = Math.max(video.currentTime - 5, 0);
           break;
         case 'ArrowUp':
           e.preventDefault();

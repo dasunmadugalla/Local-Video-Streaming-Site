@@ -27,8 +27,11 @@ function LibraryManager() {
   const [tagCategories, setTagCategories] = useState({});
   const [tagInputs, setTagInputs] = useState({});
 
-  const [selectMode, setSelectMode] = useState(false);
   const [selectedHashes, setSelectedHashes] = useState([]);
+
+  const [isBulkTagEdit, setIsBulkTagEdit] = useState(false);
+  const [selectedVideoDetails, setSelectedVideoDetails] = useState({});
+  const [bulkInitialCommonTags, setBulkInitialCommonTags] = useState({});
 
   const pageParam = parseInt(searchParams.get('page')) || 1;
   const [page, setPage] = useState(pageParam);
@@ -83,6 +86,7 @@ function LibraryManager() {
   const openTitleModal = (fileName) => {
     setSelectedFile(fileName);
     setTitleInput('');
+    setIsBulkTagEdit(false);
     const initialTags = {};
     fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`)
       .then(res => res.json())
@@ -97,16 +101,71 @@ function LibraryManager() {
       .catch(err => console.error('Failed to load video details', err));
   };
 
+  const getCommonTags = (detailsList) => {
+    const common = {};
+    Object.keys(tagCategories).forEach((cat) => {
+      const categoryLists = detailsList.map((detail) => {
+        const tags = detail.tags && Array.isArray(detail.tags[cat]) ? detail.tags[cat] : [];
+        return Array.from(new Set(tags));
+      });
+
+      if (categoryLists.length === 0) {
+        common[cat] = [];
+        return;
+      }
+
+      const base = categoryLists[0] || [];
+      common[cat] = base.filter(tag => categoryLists.every(list => list.includes(tag)));
+    });
+    return common;
+  };
+
+  const openBulkTagModal = async () => {
+    if (selectedHashes.length === 0) {
+      setPopup({ message: 'Select videos first, then right-click a selected row.', type: 'warning' });
+      return;
+    }
+
+    try {
+      const detailsEntries = await Promise.all(
+        selectedHashes.map(async (fileName) => {
+          const res = await fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`);
+          const data = await res.json();
+          return [fileName, { title: data.title || '', tags: data.tags || {} }];
+        })
+      );
+
+      const detailsMap = Object.fromEntries(detailsEntries);
+      const detailsList = Object.values(detailsMap);
+      const commonTags = getCommonTags(detailsList);
+
+      setSelectedVideoDetails(detailsMap);
+      setBulkInitialCommonTags(commonTags);
+      setTagInputs(commonTags);
+      setTitleInput('');
+      setIsBulkTagEdit(true);
+      setShowTitleModal(true);
+    } catch (err) {
+      console.error('Failed to load selected video details', err);
+      setPopup({ message: 'Failed to load selected videos', type: 'error' });
+    }
+  };
+
   const removeTag = (category, index) => {
     const updated = (tagInputs[category] || []).filter((_, i) => i !== index);
     setTagInputs({ ...tagInputs, [category]: updated });
   };
 
-  const handleTitleSave = () => {
+  const buildTagPayloadFromInputs = () => {
     const tags = {};
     Object.entries(tagInputs).forEach(([cat, arr]) => {
       if (Array.isArray(arr) && arr.length) tags[cat] = arr;
     });
+    return tags;
+  };
+
+  const handleSingleVideoSave = () => {
+    const tags = buildTagPayloadFromInputs();
 
     fetch(`${API_BASE}/api/updateVideo`, {
       method: 'POST',
@@ -128,6 +187,58 @@ function LibraryManager() {
         setPopup({ message: 'Failed to update video', type: 'error' });
         setShowTitleModal(false);
       });
+  };
+
+  const handleBulkTagSave = async () => {
+    const commonFinalTags = buildTagPayloadFromInputs();
+
+    try {
+      const results = await Promise.all(selectedHashes.map(async (fileName) => {
+        const detail = selectedVideoDetails[fileName] || { title: '', tags: {} };
+        const nextTags = { ...(detail.tags || {}) };
+
+        Object.keys(tagCategories).forEach((category) => {
+          const existing = Array.isArray(nextTags[category]) ? nextTags[category] : [];
+          const initialCommon = bulkInitialCommonTags[category] || [];
+          const finalCommon = commonFinalTags[category] || [];
+
+          const withoutOldCommon = existing.filter(tag => !initialCommon.includes(tag));
+          const merged = Array.from(new Set([...withoutOldCommon, ...finalCommon]));
+
+          if (merged.length) nextTags[category] = merged;
+          else delete nextTags[category];
+        });
+
+        const res = await fetch(`${API_BASE}/api/updateVideo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName, title: detail.title || '', tags: nextTags })
+        });
+        return res.json();
+      }));
+
+      const failed = results.some(result => !result || !result.success);
+      if (failed) {
+        setPopup({ message: 'Some videos failed to update', type: 'error' });
+      } else {
+        setPopup({ message: `${selectedHashes.length} videos updated successfully`, type: 'success' });
+      }
+
+      fetchFiles();
+      setShowTitleModal(false);
+    } catch (err) {
+      console.error('Bulk update failed', err);
+      setPopup({ message: 'Failed to update selected videos', type: 'error' });
+      setShowTitleModal(false);
+    }
+  };
+
+  const handleTitleSave = () => {
+    if (isBulkTagEdit) {
+      handleBulkTagSave();
+      return;
+    }
+    handleSingleVideoSave();
   };
 
   useEffect(() => {
@@ -182,8 +293,12 @@ function LibraryManager() {
         setOrder={setOrder}
       />
 
-      <button className='btn classic btnWrapper' onClick={() => setSelectMode(prev => !prev)}>
-        {selectMode ? 'Cancel Select' : 'Select'}
+      <button
+        className='btn classic btnWrapper'
+        onClick={() => setSelectedHashes([])}
+        disabled={selectedHashes.length === 0}
+      >
+        Unselect All
       </button>
 
       {showCategoryBox && (
@@ -217,6 +332,8 @@ function LibraryManager() {
           removeTag={removeTag}
           onSave={handleTitleSave}
           onClose={() => setShowTitleModal(false)}
+          showTitle={!isBulkTagEdit}
+          modalTitle={isBulkTagEdit ? `Edit Common Genres (${selectedHashes.length} selected)` : ''}
         />
       )}
 
@@ -228,9 +345,10 @@ function LibraryManager() {
         files={files}
         tagCategories={tagCategories}
         openTitleModal={openTitleModal}
-        selectMode={selectMode}
+        selectMode={true}
         selectedHashes={selectedHashes}
         setSelectedHashes={setSelectedHashes}
+        onSelectedRightClick={openBulkTagModal}
       />
 
       <div className="pagination">

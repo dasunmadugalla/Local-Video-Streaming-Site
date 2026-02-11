@@ -1,5 +1,5 @@
 // src/pages/SearchResults.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import VideoPreview from "../components/VideoPreview";
 import {
   FaAngleLeft,
@@ -8,6 +8,7 @@ import {
   FaAngleDoubleRight
 } from "react-icons/fa";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import TagModal from "../components/TagModal";
 import "../styling/VideoGrid.css";
 import { API_BASE } from "../utils/api";
 
@@ -25,6 +26,13 @@ const SearchResults = () => {
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const [popup, setPopup] = useState({ message: "", type: "" });
+  const [showTitleModal, setShowTitleModal] = useState(false);
+  const [titleInput, setTitleInput] = useState("");
+  const [selectedFile, setSelectedFile] = useState("");
+  const [tagCategories, setTagCategories] = useState({});
+  const [tagInputs, setTagInputs] = useState({});
 
   // Fetch a page of search results
   const fetchPage = (p, q) => {
@@ -55,6 +63,74 @@ const SearchResults = () => {
   useEffect(() => {
     fetchPage(page, query);
   }, [page, query]);
+
+  const fetchCategories = useCallback(() => {
+    fetch(`${API_BASE}/api/tagCategories`)
+      .then((res) => res.json())
+      .then((data) => setTagCategories(data || {}))
+      .catch((err) => console.error("Failed to load categories", err));
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const openTitleModal = useCallback((fileName) => {
+    setSelectedFile(fileName);
+    setTitleInput("");
+    const initialTags = {};
+
+    fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setTitleInput(data.title || "");
+        Object.keys(tagCategories).forEach((cat) => {
+          initialTags[cat] = (data.tags && data.tags[cat]) ? data.tags[cat] : [];
+        });
+        setTagInputs(initialTags);
+        setShowTitleModal(true);
+      })
+      .catch((err) => console.error("Failed to load video details", err));
+  }, [tagCategories]);
+
+  const removeTag = (category, index) => {
+    const updated = (tagInputs[category] || []).filter((_, i) => i !== index);
+    setTagInputs({ ...tagInputs, [category]: updated });
+  };
+
+  const handleTitleSave = () => {
+    const tags = {};
+    Object.entries(tagInputs).forEach(([cat, arr]) => {
+      if (Array.isArray(arr) && arr.length) tags[cat] = arr;
+    });
+
+    fetch(`${API_BASE}/api/updateVideo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: selectedFile, title: titleInput.trim(), tags })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setPopup({ message: "Video updated successfully", type: "success" });
+        } else {
+          setPopup({ message: "Failed to update video", type: "error" });
+        }
+        setShowTitleModal(false);
+      })
+      .catch((err) => {
+        console.error("Error:", err);
+        setPopup({ message: "Failed to update video", type: "error" });
+        setShowTitleModal(false);
+      });
+  };
+
+  useEffect(() => {
+    if (popup.message) {
+      const timer = setTimeout(() => setPopup({ message: "", type: "" }), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [popup]);
 
   const totalPages = Math.max(1, Math.ceil(total / LOAD_COUNT));
 
@@ -114,11 +190,39 @@ const SearchResults = () => {
 
       <div className="subContainer">
         {results.length > 0 ? (
-          results.map((file, idx) => <VideoPreview key={idx} file={file} />)
+          results.map((file, idx) => (
+            <VideoPreview
+              key={idx}
+              file={file}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                openTitleModal(file);
+              }}
+            />
+          ))
         ) : (
           <p>No videos found.</p>
         )}
       </div>
+
+      {popup.message && (
+        <div className={`popup ${popup.type}`}>
+          {popup.message}
+        </div>
+      )}
+
+      {showTitleModal && (
+        <TagModal
+          titleInput={titleInput}
+          setTitleInput={setTitleInput}
+          tagCategories={tagCategories}
+          tagInputs={tagInputs}
+          setTagInputs={setTagInputs}
+          removeTag={removeTag}
+          onSave={handleTitleSave}
+          onClose={() => setShowTitleModal(false)}
+        />
+      )}
 
       <div style={{ textAlign: "center", marginTop: "20px", display: "flex", justifyContent: "center", gap: "8px", flexWrap: "wrap" }}>
         <button onClick={() => goToPage(1)} disabled={page === 1} className="btn btnWrapper">
