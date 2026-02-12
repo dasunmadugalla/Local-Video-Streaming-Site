@@ -1,12 +1,10 @@
 // src/components/VideoGrid.jsx
 import React, { useRef, useState, useEffect } from 'react';
-import { FaCheckSquare, FaSquare } from 'react-icons/fa';
 
 const TRUNCATE_LIMIT = 40;
 
 const VideoGrid = ({
   files,
-  tagCategories,
   openTitleModal,
   selectMode,
   selectedHashes = [],
@@ -120,12 +118,8 @@ const VideoGrid = ({
       )}
 
       <div className="gridHeader">
-        {selectMode && <div>Select</div>}
         <div>File Name</div>
         <div>Size</div>
-        {Object.keys(tagCategories).map(cat => (
-          <div key={cat}>{cat} Tags</div>
-        ))}
       </div>
 
       {files.map((file) => {
@@ -139,6 +133,7 @@ const VideoGrid = ({
         return (
           <div
             className={`gridRow ${isSelected ? 'selectedRow' : ''}`}
+            style={{ cursor: selectMode ? 'pointer' : 'context-menu' }}
             key={fileKey}
             ref={el => rowRefs.current[fileKey] = el}
             onClick={() => {
@@ -155,22 +150,11 @@ const VideoGrid = ({
 
               openTitleModal(fileKey);
             }}
-            style={{ cursor: selectMode ? 'pointer' : 'context-menu' }}
           >
-            {selectMode && (
-              <div className="checkboxCell">
-                {isSelected ? <FaCheckSquare /> : <FaSquare />}
-              </div>
-            )}
             <div title={displayName}>
               {shortName}
             </div>
             <div>{file.formattedSize}</div>
-            {Object.keys(tagCategories).map(cat => (
-              <div key={cat}>
-                {(file.tags && file.tags[cat]) ? file.tags[cat].join(', ') : ''}
-              </div>
-            ))}
           </div>
         );
       })}

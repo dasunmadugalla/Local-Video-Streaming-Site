@@ -17,6 +17,7 @@ const DEFAULT_VIDEO_DIR = "X:\\";
 const FOLDERS_DB = path.join(__dirname, 'folders.json');
 
 const VIDEO_EXTS = ['.mp4', '.mkv', '.mov', '.avi'];
+const PRIMARY_DB_PATH = path.join(__dirname, 'primaryDb', 'db.json');
 
 function readFoldersFile() {
   try {
@@ -130,6 +131,63 @@ function findFileByEncoded(encoded) {
   return { folder, fileName, fullPath };
 }
 
+function readPrimaryDB() {
+  try {
+    const raw = fs.readFileSync(PRIMARY_DB_PATH, 'utf8');
+    const parsed = JSON.parse(raw || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function normalizeText(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function resolveVideoMeta(dbVideos, encodedName, plainFileName) {
+  const videos = dbVideos && typeof dbVideos === 'object' ? dbVideos : {};
+
+  // Prefer exact encoded match if the DB stores encoded file names.
+  const exact = Object.values(videos).find(
+    (entry) => entry && entry.fileName && entry.fileName === encodedName
+  );
+  if (exact) return exact;
+
+  const plainLower = normalizeText(plainFileName);
+  if (!plainLower) return null;
+
+  // Fallback for existing DB rows that store plain file names.
+  const byPlainName = Object.values(videos).find((entry) => {
+    if (!entry || !entry.fileName) return false;
+    return normalizeText(entry.fileName) === plainLower;
+  });
+
+  return byPlainName || null;
+}
+
+function matchesSearchQuery(fileInfo, videoMeta, queryLower) {
+  if (!queryLower) return true;
+
+  const title = normalizeText(videoMeta && videoMeta.title);
+  const fileName = normalizeText(fileInfo && fileInfo.fileName);
+  const encodedName = normalizeText(fileInfo && fileInfo.encodedName);
+
+  const tags = videoMeta && typeof videoMeta.tags === 'object'
+    ? Object.values(videoMeta.tags)
+      .flat()
+      .map(tag => normalizeText(tag))
+      .filter(Boolean)
+    : [];
+
+  if (title.includes(queryLower)) return true;
+  if (fileName.includes(queryLower)) return true;
+  if (encodedName.includes(queryLower)) return true;
+  if (tags.some(tag => tag.includes(queryLower))) return true;
+
+  return false;
+}
+
 /* ---------- expose a file resolver to primaryDb handler ---------- */
 function resolveFilePath(encodedName) {
   const info = findFileByEncoded(encodedName);
@@ -203,11 +261,12 @@ app.post('/api/folders', (req, res) => {
 
   if (!folderPath) return res.status(400).json({ error: 'Missing folder path' });
 
-  if (!fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
-    return res.status(400).json({ error: 'Folder does not exist or is not accessible' });
-  }
+  // existence + directory check
+  if (!fs.existsSync(folderPath)) return res.status(400).json({ error: 'Folder does not exist on server' });
+  if (!fs.statSync(folderPath).isDirectory()) return res.status(400).json({ error: 'Path is not a directory' });
 
-  const all = readFoldersFile();
+  let all = readFoldersFile();
+  // avoid duplicates by normalized absolute path
   if (all.some(f => path.resolve(f.path) === path.resolve(folderPath))) {
     return res.status(400).json({ error: 'Folder already added' });
   }
@@ -291,10 +350,17 @@ app.get('/files', (req, res) => {
 
 app.get('/search', (req, res) => {
   const { q = '', offset = 0, limit = 15 } = req.query;
-  const qLower = String(q).trim().toLowerCase();
+  const qLower = normalizeText(q);
 
   const all = getAllFilesFromActiveFolders();
-  const matched = qLower ? all.filter(it => it.fileName.toLowerCase().includes(qLower)) : all.slice();
+  const primaryDB = readPrimaryDB();
+  const videos = primaryDB.videos || {};
+
+  const matched = all.filter((it) => {
+    const meta = resolveVideoMeta(videos, it.encodedName, it.fileName);
+    return matchesSearchQuery(it, meta, qLower);
+  });
+
   matched.sort((a, b) => a.fileName.toLowerCase().localeCompare(b.fileName.toLowerCase()));
   const total = matched.length;
   const start = parseInt(offset);
@@ -378,35 +444,38 @@ app.get('/videos/:encoded', (req, res) => {
   else if (ext === '.mov') contentType = 'video/quicktime';
   else if (ext === '.avi') contentType = 'video/x-msvideo';
 
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
-
-    if (start >= total || end >= total) {
-      res.status(416).set({ 'Content-Range': `bytes */${total}` }).end();
-      return;
-    }
-
-    const chunkSize = (end - start) + 1;
-    const file = fs.createReadStream(fullPath, { start, end });
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${total}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
-      'Content-Type': contentType
-    });
-    file.pipe(res);
-  } else {
+  if (!range) {
     res.writeHead(200, {
       'Content-Length': total,
       'Content-Type': contentType,
       'Accept-Ranges': 'bytes'
     });
     fs.createReadStream(fullPath).pipe(res);
+    return;
   }
+
+  const parts = range.replace(/bytes=/, '').split('-');
+  const start = parseInt(parts[0], 10);
+  const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+
+  if (start >= total || end >= total) {
+    res.status(416).send('Requested range not satisfiable');
+    return;
+  }
+
+  const chunkSize = (end - start) + 1;
+  const stream = fs.createReadStream(fullPath, { start, end });
+
+  res.writeHead(206, {
+    'Content-Range': `bytes ${start}-${end}/${total}`,
+    'Accept-Ranges': 'bytes',
+    'Content-Length': chunkSize,
+    'Content-Type': contentType
+  });
+
+  stream.pipe(res);
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log("Server running on http://0.0.0.0:3000");
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${port}`);
 });

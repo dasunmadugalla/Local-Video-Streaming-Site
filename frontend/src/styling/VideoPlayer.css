@@ -398,19 +398,7 @@ input.volumeBar::-moz-range-progress {
   gap: 10px;
 }
 
-/* Buttons */
-.btn {
-  background: transparent;
-  border: none;
-  padding: 8px;
-  cursor: pointer;
-  color: inherit;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  font-size: 16px;
-}
+
 
 
 /* Specific sizes */

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useCallback } from 'react';
+import React, { useEffect, useState, useContext, useCallback, useMemo } from 'react';
 import VideoPreview from '../components/VideoPreview';
 import { FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 import { FileContext } from '../components/FileContext';
@@ -25,7 +25,7 @@ const FileList = ({ isHome }) => {
   const {
     allCount, setAllCount,
     visibleFiles, setVisibleFiles,
-    hasFetched, setHasFetched,
+    setHasFetched,
     shuffledCache, setShuffledCache
   } = useContext(FileContext);
 
@@ -36,6 +36,11 @@ const FileList = ({ isHome }) => {
   const [selectedFile, setSelectedFile] = useState('');
   const [tagCategories, setTagCategories] = useState({});
   const [tagInputs, setTagInputs] = useState({});
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectionAnchor, setSelectionAnchor] = useState(null);
+  const [isBulkTagEdit, setIsBulkTagEdit] = useState(false);
+  const [selectedVideoDetails, setSelectedVideoDetails] = useState({});
+  const [bulkInitialCommonTags, setBulkInitialCommonTags] = useState({});
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -113,6 +118,7 @@ const FileList = ({ isHome }) => {
   const openTitleModal = useCallback((fileName) => {
     setSelectedFile(fileName);
     setTitleInput('');
+    setIsBulkTagEdit(false);
     const initialTags = {};
 
     fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`)
@@ -128,16 +134,65 @@ const FileList = ({ isHome }) => {
       .catch(err => console.error('Failed to load video details', err));
   }, [tagCategories]);
 
-  const removeTag = (category, index) => {
-    const updated = (tagInputs[category] || []).filter((_, i) => i !== index);
-    setTagInputs({ ...tagInputs, [category]: updated });
-  };
 
-  const handleTitleSave = () => {
+  const getCommonTags = useCallback((detailsList) => {
+    const common = {};
+    Object.keys(tagCategories).forEach((cat) => {
+      const categoryLists = detailsList.map((detail) => {
+        const tags = detail.tags && Array.isArray(detail.tags[cat]) ? detail.tags[cat] : [];
+        return Array.from(new Set(tags));
+      });
+
+      if (categoryLists.length === 0) {
+        common[cat] = [];
+        return;
+      }
+
+      const base = categoryLists[0] || [];
+      common[cat] = base.filter(tag => categoryLists.every(list => list.includes(tag)));
+    });
+
+    return common;
+  }, [tagCategories]);
+
+  const openBulkTagModal = useCallback(async () => {
+    if (!isHome || selectedFiles.length === 0) return;
+
+    try {
+      const detailsEntries = await Promise.all(
+        selectedFiles.map(async (fileName) => {
+          const res = await fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`);
+          const data = await res.json();
+          return [fileName, { title: data.title || '', tags: data.tags || {} }];
+        })
+      );
+
+      const detailsMap = Object.fromEntries(detailsEntries);
+      const detailsList = Object.values(detailsMap);
+      const commonTags = getCommonTags(detailsList);
+
+      setSelectedVideoDetails(detailsMap);
+      setBulkInitialCommonTags(commonTags);
+      setTagInputs(commonTags);
+      setTitleInput('');
+      setIsBulkTagEdit(true);
+      setShowTitleModal(true);
+    } catch (err) {
+      console.error('Failed to load selected video details', err);
+      setPopup({ message: 'Failed to load selected videos', type: 'error' });
+    }
+  }, [getCommonTags, isHome, selectedFiles]);
+
+  const buildTagPayloadFromInputs = () => {
     const tags = {};
     Object.entries(tagInputs).forEach(([cat, arr]) => {
       if (Array.isArray(arr) && arr.length) tags[cat] = arr;
     });
+    return tags;
+  };
+
+  const handleSingleVideoSave = () => {
+    const tags = buildTagPayloadFromInputs();
 
     fetch(`${API_BASE}/api/updateVideo`, {
       method: 'POST',
@@ -160,6 +215,63 @@ const FileList = ({ isHome }) => {
       });
   };
 
+  const handleBulkTagSave = async () => {
+    const commonFinalTags = buildTagPayloadFromInputs();
+
+    try {
+      const results = await Promise.all(selectedFiles.map(async (fileName) => {
+        const detail = selectedVideoDetails[fileName] || { title: '', tags: {} };
+        const nextTags = { ...(detail.tags || {}) };
+
+        Object.keys(tagCategories).forEach((category) => {
+          const existing = Array.isArray(nextTags[category]) ? nextTags[category] : [];
+          const initialCommon = bulkInitialCommonTags[category] || [];
+          const finalCommon = commonFinalTags[category] || [];
+
+          const withoutOldCommon = existing.filter(tag => !initialCommon.includes(tag));
+          const merged = Array.from(new Set([...withoutOldCommon, ...finalCommon]));
+
+          if (merged.length) nextTags[category] = merged;
+          else delete nextTags[category];
+        });
+
+        const res = await fetch(`${API_BASE}/api/updateVideo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName, title: detail.title || '', tags: nextTags })
+        });
+        return res.json();
+      }));
+
+      const failed = results.some(result => !result || !result.success);
+      if (failed) {
+        setPopup({ message: 'Some videos failed to update', type: 'error' });
+      } else {
+        setPopup({ message: `${selectedFiles.length} videos updated successfully`, type: 'success' });
+      }
+
+      setShowTitleModal(false);
+    } catch (err) {
+      console.error('Bulk update failed', err);
+      setPopup({ message: 'Failed to update selected videos', type: 'error' });
+      setShowTitleModal(false);
+    }
+  };
+
+  const handleTitleSave = () => {
+    if (isBulkTagEdit) {
+      handleBulkTagSave();
+      return;
+    }
+
+    handleSingleVideoSave();
+  };
+
+  const removeTag = (category, index) => {
+    const updated = (tagInputs[category] || []).filter((_, i) => i !== index);
+    setTagInputs({ ...tagInputs, [category]: updated });
+  };
+
   useEffect(() => {
     if (popup.message) {
       const timer = setTimeout(() => setPopup({ message: '', type: '' }), 2500);
@@ -175,18 +287,18 @@ const FileList = ({ isHome }) => {
       bc.onmessage = (e) => {
         if (e.data && e.data.type === 'foldersChanged') {
           // clear cache and re-fetch current page
-          try { setShuffledCache([]); } catch (err) {}
+          try { setShuffledCache([]); } catch { /* ignore */ }
           fetchPage(page);
         }
       };
-    } catch (err) {
+    } catch {
       // BroadcastChannel not available — no-op
       bc = null;
     }
 
     // Also listen for a custom DOM event fallback
     const handler = () => {
-      try { setShuffledCache([]); } catch (err) {}
+      try { setShuffledCache([]); } catch { /* ignore */ }
       fetchPage(page);
     };
     window.addEventListener('app_folders_changed', handler);
@@ -195,7 +307,6 @@ const FileList = ({ isHome }) => {
       if (bc) bc.close();
       window.removeEventListener('app_folders_changed', handler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, fetchPage, setShuffledCache]);
 
   const totalPages = Math.max(1, Math.ceil((allCount || 0) / LOAD_COUNT));
@@ -216,6 +327,77 @@ const FileList = ({ isHome }) => {
     if (newPage === 1) navigate('/');
     else navigate(`/videos?page=${newPage}`);
   };
+
+
+  const fileIndexMap = useMemo(() => {
+    const map = new Map();
+    visibleFiles.forEach((file, idx) => map.set(file, idx));
+    return map;
+  }, [visibleFiles]);
+
+  useEffect(() => {
+    // keep selections scoped to currently visible files
+    setSelectedFiles(prev => prev.filter(file => fileIndexMap.has(file)));
+    if (selectionAnchor && !fileIndexMap.has(selectionAnchor)) {
+      setSelectionAnchor(null);
+    }
+  }, [fileIndexMap, selectionAnchor]);
+
+  const handleHomeSelectionClick = (event, file) => {
+    if (!isHome) return;
+
+    const isLeftClick = (event.nativeEvent?.button ?? 0) === 0;
+    if (!isLeftClick) return;
+
+    const isCtrlLike = event.ctrlKey || event.metaKey;
+    const isShift = event.shiftKey;
+    if (!isCtrlLike && !isShift) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentIndex = fileIndexMap.get(file);
+    if (typeof currentIndex !== 'number') return;
+
+    if (isShift) {
+      const anchorIndex = fileIndexMap.get(selectionAnchor);
+      if (typeof anchorIndex === 'number') {
+        const [start, end] = [anchorIndex, currentIndex].sort((a, b) => a - b);
+        const range = visibleFiles.slice(start, end + 1);
+        setSelectedFiles(prev => Array.from(new Set([...prev, ...range])));
+      } else {
+        setSelectedFiles([file]);
+      }
+      setSelectionAnchor(file);
+      return;
+    }
+
+    if (isCtrlLike) {
+      setSelectedFiles(prev => (
+        prev.includes(file) ? prev.filter(item => item !== file) : [...prev, file]
+      ));
+      setSelectionAnchor(file);
+    }
+  };
+
+  useEffect(() => {
+    if (!isHome) return;
+
+    const handleOutsideClick = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      if (target.closest('.videoBoxWrapper')) return;
+
+      setSelectedFiles([]);
+      setSelectionAnchor(null);
+    };
+
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+    };
+  }, [isHome]);
 
   const startIndex = (allCount && allCount > 0) ? ((page - 1) * LOAD_COUNT + 1) : (visibleFiles.length > 0 ? ((page - 1) * LOAD_COUNT + 1) : 0);
   const endIndex = (allCount && allCount > 0) ? Math.min(page * LOAD_COUNT, allCount) : (visibleFiles.length ? ((page - 1) * LOAD_COUNT + visibleFiles.length) : 0);
@@ -248,8 +430,15 @@ const FileList = ({ isHome }) => {
             <VideoPreview
               key={index}
               file={file}
+              isSelected={selectedFiles.includes(file)}
+              onSelectClick={isHome ? (e) => handleHomeSelectionClick(e, file) : undefined}
               onContextMenu={isHome ? (e) => {
                 e.preventDefault();
+                if (selectedFiles.length > 0 && selectedFiles.includes(file)) {
+                  openBulkTagModal();
+                  return;
+                }
+
                 openTitleModal(file);
               } : undefined}
             />
@@ -272,30 +461,32 @@ const FileList = ({ isHome }) => {
             removeTag={removeTag}
             onSave={handleTitleSave}
             onClose={() => setShowTitleModal(false)}
+            showTitle={!isBulkTagEdit}
+            modalTitle={isBulkTagEdit ? `Edit Common Genres (${selectedFiles.length} selected)` : ''}
           />
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <button onClick={() => goToPage(1)} disabled={page === 1} className='btn btnWrapper'>
-            <FaAngleDoubleLeft /> First
+        <div style={{ textAlign: 'center', marginTop: '75px', display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
+          <button onClick={() => goToPage(1)} disabled={page === 1} className='pgArrBtn'>
+            <FaAngleDoubleLeft /> 
           </button>
 
-          <button onClick={() => goToPage(Math.max(page - 1, 1))} disabled={page === 1} className='btn btnWrapper'>
-            <FaAngleLeft /> Prev
+          <button onClick={() => goToPage(Math.max(page - 1, 1))} disabled={page === 1} className='pgArrBtn'>
+            <FaAngleLeft /> 
           </button>
 
           {getPageNumbers().map(num => (
-            <button key={num} onClick={() => goToPage(num)} className={`btn cstmbtn ${num === page ? 'activePage' : ''}`}>
+            <button key={num} onClick={() => goToPage(num)} className={`pgbtn pgnmbBtn ${num === page ? 'activePage' : ''}`}>
               {num}
             </button>
           ))}
 
-          <button onClick={() => goToPage(Math.min(page + 1, totalPages))} disabled={page === totalPages} className='btn btnWrapper'>
-            Next <FaAngleRight />
+          <button onClick={() => goToPage(Math.min(page + 1, totalPages))} disabled={page === totalPages} className='pgArrBtn'>
+             <FaAngleRight />
           </button>
 
-          <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className='btn btnWrapper'>
-            Last <FaAngleDoubleRight />
+          <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className='pgArrBtn'>
+             <FaAngleDoubleRight />
           </button>
         </div>
       </div>

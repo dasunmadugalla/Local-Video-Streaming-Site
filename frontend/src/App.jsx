@@ -63,7 +63,7 @@ function NavigationBar() {
         <ul>
           <li><Link to="/" className={navLinkClass(isHomeActive)}>Home</Link></li>
           <li><Link to="/library" className={navLinkClass(isLibraryActive)}>Library</Link></li>
-          <li><Link to="/category" className={navLinkClass(isCategoryActive)}>Category</Link></li>
+          {/* <li><Link to="/category" className={navLinkClass(isCategoryActive)}>Category</Link></li> */}
           <li><Link to="/settings" className={navLinkClass(isSettingsActive)}>Settings</Link></li>
         </ul>
       </div>

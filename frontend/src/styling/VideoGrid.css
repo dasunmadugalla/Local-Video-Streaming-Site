@@ -163,7 +163,7 @@
 
   .subContainer {
     grid-template-columns: 1fr;
-  }
+  }z
 }
 
 /* Optional: smooth fade-in and fade-out animation */
@@ -175,4 +175,13 @@
 @keyframes fadeout {
   from { opacity: 1; transform: translateY(0); }
   to   { opacity: 0; transform: translateY(10px); }
+}
+
+.videoBoxWrapper.selectedPreview .videoBox {
+  outline: 2px solid rgba(0, 123, 255, 0.9);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+}
+
+.videoBoxWrapper.selectedPreview .title {
+  color: #ffffff;
 }

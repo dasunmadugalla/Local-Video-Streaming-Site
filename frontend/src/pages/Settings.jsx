@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { API_BASE } from '../utils/api';
 import { FileContext } from '../components/FileContext';
+import { FaRegTrashAlt  } from "react-icons/fa";
 import '../styling/Settings.css';
 
 function Settings() {
@@ -189,11 +190,11 @@ function Settings() {
                       </div>
 
                       <button
-                        className="btn classic folder-remove"
+                        className="btn folder-remove trash"
                         onClick={(e) => { e.stopPropagation(); deleteFolder(f.id); }}
                         aria-label={`Remove folder ${f.name}`}
                       >
-                        Remove
+                        <FaRegTrashAlt  />
                       </button>
                     </div>
                   );

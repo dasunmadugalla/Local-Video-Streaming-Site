@@ -5,7 +5,7 @@ import { API_BASE } from '../utils/api';
 
 const PLACEHOLDER_QUALITY = '—'; // visible placeholder while loading
 
-const VideoPreview = React.forwardRef(({ file, onContextMenu }, ref) => {
+const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isSelected = false }, ref) => {
   const videoRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [duration, setDuration] = useState(null); // seconds
@@ -42,9 +42,9 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu }, ref) => {
       const v = videoRef.current;
       if (v) {
         v.pause();
-        try { v.currentTime = 0; } catch (e) { /* ignore seeking errors */ }
+        try { v.currentTime = 0; } catch { /* ignore seeking errors */ }
       }
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
 
     setIsLoaded(false);
     setDuration(null);
@@ -111,13 +111,14 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu }, ref) => {
   };
 
   return (
-    <div className='videoBoxWrapper'>
+    <div className={`videoBoxWrapper ${isSelected ? 'selectedPreview' : ''}`.trim()}>
       <div
         className={`videoBox ${isLoaded ? '' : 'shimmer'}`}
         ref={ref}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onContextMenu={onContextMenu}
+        onClickCapture={onSelectClick}
       >
         <Link to={`/watch/${encodeURIComponent(encodedName)}`} className='videoLink'>
           <div className="videoInner">

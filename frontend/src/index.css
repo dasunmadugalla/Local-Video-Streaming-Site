@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
-
 /* Import component-specific styles */
 @import '../src/styling/Global.css';
 @import '../src/styling/Navbar.css';
@@ -10,6 +9,14 @@
 @import '../src/styling/Library.css';
 @import '../src/styling/SearchResults.css';
 /* @import '../src/styling//PageNotFound.css'; */
+
+@font-face {
+  font-family: "oracle";
+  src: url("../src/fonts/Oracle/ABCOracle-Regular-Trial.otf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 
 @font-face {
   font-family: 'onest'; /* A name you choose */
@@ -42,5 +49,5 @@
 /* rgb(16, 16, 16) */
 
 *{
-    font-family: poppins !important;
+    font-family: oracle !important;
 }
