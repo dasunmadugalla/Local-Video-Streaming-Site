@@ -24,8 +24,17 @@
   flex-direction: column;
   cursor: pointer;
   align-items: center;
+  overflow: hidden;
+  border: 2px solid transparent;
 }
+.selectedPreview{
+  border: 2px solid var(  --color-secondary);
+  background-color: var(  --color-secondary);
+}
+.selectedPreview .title{
+    color:white;
 
+}
 /* === videoBox (Wrapper Around Link & Video) === */
 .videoBox {
   position: relative;
@@ -177,11 +186,11 @@
   to   { opacity: 0; transform: translateY(10px); }
 }
 
-.videoBoxWrapper.selectedPreview .videoBox {
+/* .videoBoxWrapper.selectedPreview .videoBox {
   outline: 2px solid rgba(0, 123, 255, 0.9);
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
 }
 
 .videoBoxWrapper.selectedPreview .title {
   color: #ffffff;
-}
+} */

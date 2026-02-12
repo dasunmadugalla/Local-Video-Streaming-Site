@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { API_BASE } from '../utils/api';
 import { FileContext } from '../components/FileContext';
 import { FaRegTrashAlt  } from "react-icons/fa";
+import ScrollToggleButton from '../components/ScrollToggleButton';
 import '../styling/Settings.css';
 
 function Settings() {
@@ -211,6 +212,8 @@ function Settings() {
         </button>
         <button className="btn classic" onClick={fetchFolders}>Refresh</button>
       </div>
+
+      <ScrollToggleButton />
     </div>
   );
 }

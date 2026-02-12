@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import HeaderControls from '../components/HeaderControls';
 import TagModal from '../components/TagModal';
 import VideoGrid from '../components/VideoGrid';
+import ScrollToggleButton from '../components/ScrollToggleButton';
 import { API_BASE } from '../utils/api';
 
 function LibraryManager() {
@@ -32,6 +33,7 @@ function LibraryManager() {
   const [isBulkTagEdit, setIsBulkTagEdit] = useState(false);
   const [selectedVideoDetails, setSelectedVideoDetails] = useState({});
   const [bulkInitialCommonTags, setBulkInitialCommonTags] = useState({});
+  const videoGridRef = useRef(null);
 
   const pageParam = parseInt(searchParams.get('page')) || 1;
   const [page, setPage] = useState(pageParam);
@@ -257,6 +259,18 @@ function LibraryManager() {
     }
   }, [popup]);
 
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (selectedHashes.length === 0) return;
+      if (!videoGridRef.current?.contains(event.target)) {
+        setSelectedHashes([]);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [selectedHashes]);
+
   const totalPages = Math.ceil(total / LIMIT);
 
   const getPageNumbers = () => {
@@ -292,14 +306,6 @@ function LibraryManager() {
         order={order}
         setOrder={setOrder}
       />
-
-      <button
-        className='btn classic btnWrapper'
-        onClick={() => setSelectedHashes([])}
-        disabled={selectedHashes.length === 0}
-      >
-        Unselect All
-      </button>
 
       {showCategoryBox && (
         <div className="categoryModal">
@@ -341,15 +347,17 @@ function LibraryManager() {
         Total Videos: <strong>{total}</strong> | Total Size: <strong>{formatSize(totalSize)}</strong>
       </div>
 
-      <VideoGrid
-        files={files}
-        tagCategories={tagCategories}
-        openTitleModal={openTitleModal}
-        selectMode={true}
-        selectedHashes={selectedHashes}
-        setSelectedHashes={setSelectedHashes}
-        onSelectedRightClick={openBulkTagModal}
-      />
+      <div ref={videoGridRef}>
+        <VideoGrid
+          files={files}
+          tagCategories={tagCategories}
+          openTitleModal={openTitleModal}
+          selectMode={true}
+          selectedHashes={selectedHashes}
+          setSelectedHashes={setSelectedHashes}
+          onSelectedRightClick={openBulkTagModal}
+        />
+      </div>
 
       <div className="pagination">
         <button onClick={() => goToPage(1)} disabled={page === 1} className='pgArrBtn'><FaAngleDoubleLeft /> First</button>
@@ -364,6 +372,8 @@ function LibraryManager() {
         <button onClick={() => goToPage(Math.min(page + 1, totalPages))} disabled={page === totalPages} className='pgArrBtn'>Next <FaAngleRight /></button>
         <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className='pgArrBtn'>Last <FaAngleDoubleRight /></button>
       </div>
+
+      <ScrollToggleButton />
     </>
   );
 }

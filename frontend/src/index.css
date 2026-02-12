@@ -8,6 +8,7 @@
 @import '../src/styling/Effects.css';
 @import '../src/styling/Library.css';
 @import '../src/styling/SearchResults.css';
+@import '../src/styling/ScrollToggleButton.css';
 /* @import '../src/styling//PageNotFound.css'; */
 
 @font-face {

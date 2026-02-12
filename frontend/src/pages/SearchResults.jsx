@@ -225,26 +225,26 @@ const SearchResults = () => {
       )}
 
       <div style={{ textAlign: "center", marginTop: "20px", display: "flex", justifyContent: "center", gap: "8px", flexWrap: "wrap" }}>
-        <button onClick={() => goToPage(1)} disabled={page === 1} className="btn btnWrapper">
-          <FaAngleDoubleLeft /> First
+        <button onClick={() => goToPage(1)} disabled={page === 1} className="pgArrBtn">
+          <FaAngleDoubleLeft /> 
         </button>
 
-        <button onClick={() => goToPage(Math.max(page - 1, 1))} disabled={page === 1} className="btn btnWrapper">
-          <FaAngleLeft /> Prev
+        <button onClick={() => goToPage(Math.max(page - 1, 1))} disabled={page === 1} className="pgArrBtn">
+          <FaAngleLeft /> 
         </button>
 
         {getPageNumbers().map((num) => (
-          <button key={num} onClick={() => goToPage(num)} className={`btn cstmbtn ${num === page ? "activePage" : ""}`}>
+          <button key={num} onClick={() => goToPage(num)} className={`pgbtn pgnmbBtn${num === page ? 'activePage' : ''}`}>
             {num}
           </button>
         ))}
 
-        <button onClick={() => goToPage(Math.min(page + 1, totalPages))} disabled={page === totalPages} className="btn btnWrapper">
-          Next <FaAngleRight />
+        <button onClick={() => goToPage(Math.min(page + 1, totalPages))} disabled={page === totalPages} className="pgArrBtn">
+           <FaAngleRight />
         </button>
 
-        <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className="btn btnWrapper">
-          Last <FaAngleDoubleRight />
+        <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className="pgArrBtn">
+           <FaAngleDoubleRight />
         </button>
       </div>
     </div>

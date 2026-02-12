@@ -1,0 +1,27 @@
+.scroll-toggle-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  background: rgba(20, 20, 20, 0.8);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.scroll-toggle-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(40, 40, 40, 0.92);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.scroll-toggle-btn:active {
+  transform: translateY(0);
+}
