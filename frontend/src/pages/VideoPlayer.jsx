@@ -4,7 +4,9 @@ import VideoPreview from '../components/VideoPreview';
 import PlayerControls from '../components/PlayerControls';
 import ProgressBar from '../components/ProgressBar';
 import NextPreviews from '../components/NextPreviews';
+import TagModal from '../components/TagModal';
 import '../styling/VideoPlayer.css';
+import '../styling/Library.css';
 import { API_BASE } from '../utils/api';
 
 // tweak these if you want different behavior
@@ -65,6 +67,12 @@ const VideoPlayer = () => {
     return saved ? Math.round(parseFloat(saved) * 100) : 100;
   });
   const [randomNext, setRandomNext] = useState([]);
+  const [popup, setPopup] = useState({ message: '', type: '' });
+  const [showTitleModal, setShowTitleModal] = useState(false);
+  const [titleInput, setTitleInput] = useState('');
+  const [selectedFile, setSelectedFile] = useState('');
+  const [tagCategories, setTagCategories] = useState({});
+  const [tagInputs, setTagInputs] = useState({});
 
   // controls visibility
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -137,6 +145,13 @@ const VideoPlayer = () => {
       .catch(() => setRandomNext([]));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [decodedName]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/tagCategories`)
+      .then(res => res.json())
+      .then(data => setTagCategories(data || {}))
+      .catch(() => setTagCategories({}));
+  }, []);
 
   // apply playbackRate to video element
   useEffect(() => {
@@ -635,6 +650,69 @@ const VideoPlayer = () => {
     lastTapXRef.current = x;
   };
 
+  const openTitleModal = (fileName) => {
+    setSelectedFile(fileName);
+    setTitleInput('');
+
+    fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const initialTags = {};
+        Object.keys(tagCategories).forEach((cat) => {
+          initialTags[cat] = (data.tags && data.tags[cat]) ? data.tags[cat] : [];
+        });
+
+        setTitleInput(data.title || '');
+        setTagInputs(initialTags);
+        setShowTitleModal(true);
+      })
+      .catch(() => {
+        setPopup({ message: 'Failed to load video details', type: 'error' });
+      });
+  };
+
+  const removeTag = (category, index) => {
+    const updated = (tagInputs[category] || []).filter((_, i) => i !== index);
+    setTagInputs({ ...tagInputs, [category]: updated });
+  };
+
+  const handleTitleSave = () => {
+    const tags = {};
+    Object.entries(tagInputs).forEach(([cat, arr]) => {
+      if (cat.endsWith('_input')) return;
+      if (Array.isArray(arr) && arr.length) tags[cat] = arr;
+    });
+
+    fetch(`${API_BASE}/api/updateVideo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName: selectedFile, title: titleInput.trim(), tags })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setPopup({
+          message: data.success ? 'Video updated successfully' : 'Failed to update video',
+          type: data.success ? 'success' : 'error'
+        });
+        setShowTitleModal(false);
+      })
+      .catch(() => {
+        setPopup({ message: 'Failed to update video', type: 'error' });
+        setShowTitleModal(false);
+      });
+  };
+
+  useEffect(() => {
+    if (!popup.message) return;
+    const timer = setTimeout(() => setPopup({ message: '', type: '' }), 2500);
+    return () => clearTimeout(timer);
+  }, [popup]);
+
+  const handleSuggestedPreviewContextMenu = (event, fileName) => {
+    event.preventDefault();
+    openTitleModal(fileName);
+  };
+
   // timeupdate handler
   const handleTimeUpdate = () => {
     const v = videoRef.current;
@@ -755,7 +833,31 @@ const VideoPlayer = () => {
         <div className="actionsRow">hello</div>
       </div>
 
-      {randomNext.length > 0 && <NextPreviews randomNext={randomNext} />}
+      {popup.message && (
+        <div className={`popup ${popup.type}`}>
+          {popup.message}
+        </div>
+      )}
+
+      {showTitleModal && (
+        <TagModal
+          titleInput={titleInput}
+          setTitleInput={setTitleInput}
+          tagCategories={tagCategories}
+          tagInputs={tagInputs}
+          setTagInputs={setTagInputs}
+          removeTag={removeTag}
+          onSave={handleTitleSave}
+          onClose={() => setShowTitleModal(false)}
+        />
+      )}
+
+      {randomNext.length > 0 && (
+        <NextPreviews
+          randomNext={randomNext}
+          onContextMenu={handleSuggestedPreviewContextMenu}
+        />
+      )}
     </div>
   );
 };

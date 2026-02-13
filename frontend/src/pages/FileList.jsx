@@ -432,7 +432,7 @@ const FileList = ({ isHome }) => {
               file={file}
               isSelected={selectedFiles.includes(file)}
               onSelectClick={isHome ? (e) => handleHomeSelectionClick(e, file) : undefined}
-              onContextMenu={isHome ? (e) => {
+              onContextMenu={(e) => {
                 e.preventDefault();
                 if (selectedFiles.length > 0 && selectedFiles.includes(file)) {
                   openBulkTagModal();
@@ -440,7 +440,7 @@ const FileList = ({ isHome }) => {
                 }
 
                 openTitleModal(file);
-              } : undefined}
+              }}
             />
           ))}
         </div>

@@ -111,14 +111,16 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
   };
 
   return (
-    <div className={`videoBoxWrapper ${isSelected ? 'selectedPreview' : ''}`.trim()}>
+    <div
+      className={`videoBoxWrapper ${isSelected ? 'selectedPreview' : ''}`.trim()}
+      onContextMenu={onContextMenu}
+      onClickCapture={onSelectClick}
+    >
       <div
         className={`videoBox ${isLoaded ? '' : 'shimmer'}`}
         ref={ref}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onContextMenu={onContextMenu}
-        onClickCapture={onSelectClick}
       >
         <Link to={`/watch/${encodeURIComponent(encodedName)}`} className='videoLink'>
           <div className="videoInner">
