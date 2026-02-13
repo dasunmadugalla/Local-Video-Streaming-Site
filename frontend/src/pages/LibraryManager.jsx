@@ -360,8 +360,8 @@ function LibraryManager() {
       </div>
 
       <div className="pagination">
-        <button onClick={() => goToPage(1)} disabled={page === 1} className='pgArrBtn'><FaAngleDoubleLeft /> First</button>
-        <button onClick={() => goToPage(Math.max(page - 1, 1))} disabled={page === 1} className='pgArrBtn'><FaAngleLeft /> Prev</button>
+        <button onClick={() => goToPage(1)} disabled={page === 1} className='pgArrBtn'><FaAngleDoubleLeft /> </button>
+        <button onClick={() => goToPage(Math.max(page - 1, 1))} disabled={page === 1} className='pgArrBtn'><FaAngleLeft /> </button>
 
         {getPageNumbers().map(num => (
           <button key={num} onClick={() => goToPage(num)} className={`pgbtn pgnmbBtn${num === page ? 'activePage' : ''}`}>
@@ -369,8 +369,8 @@ function LibraryManager() {
           </button>
         ))}
 
-        <button onClick={() => goToPage(Math.min(page + 1, totalPages))} disabled={page === totalPages} className='pgArrBtn'>Next <FaAngleRight /></button>
-        <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className='pgArrBtn'>Last <FaAngleDoubleRight /></button>
+        <button onClick={() => goToPage(Math.min(page + 1, totalPages))} disabled={page === totalPages} className='pgArrBtn'> <FaAngleRight /></button>
+        <button onClick={() => goToPage(totalPages)} disabled={page === totalPages} className='pgArrBtn'> <FaAngleDoubleRight /></button>
       </div>
 
       <ScrollToggleButton />

@@ -195,7 +195,7 @@ function Settings() {
                         onClick={(e) => { e.stopPropagation(); deleteFolder(f.id); }}
                         aria-label={`Remove folder ${f.name}`}
                       >
-                        <FaRegTrashAlt  />
+                        <FaRegTrashAlt/>
                       </button>
                     </div>
                   );

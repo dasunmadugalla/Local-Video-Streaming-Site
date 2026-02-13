@@ -84,12 +84,14 @@
 }
 
 .folder-row:hover {
-  transform: translateY(-1px);
+  /* transform: translateY(-1px); */
+  background-color: rgb(12, 12, 12);
 }
 
 .folder-row.active {
   background: rgba(225,16,31,0.10);
   border: 1px solid rgba(225,16,31,0.25);
+  color: var(--secondary_color);
 }
 
 /* folder main text */
@@ -124,7 +126,7 @@
   font-size: 13px;
   margin-right: 8px;
 }
-.folder-count {}
+/* .folder-count {} */
 .folder-size { margin-top: 4px; }
 
 

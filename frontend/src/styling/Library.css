@@ -317,6 +317,31 @@ strong {
   font-size: 10px;
 }
 
+.tagSuggestions {
+  margin-top: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-bg-input);
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.tagSuggestionItem {
+  border: none;
+  background: transparent;
+  color: var(--color-fontColor);
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tagSuggestionItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 label {
   font-size: 10px;
   text-transform: capitalize;
