@@ -84,10 +84,10 @@ button {
   background-color: transparent !important;
   border: none;
 }
-
 .pgctrl:hover {
   border: none !important;
 }
+
 .activePage {
   color: var(--color-secondary) !important;
   border: 1.5px solid var(--color-secondary) !important;

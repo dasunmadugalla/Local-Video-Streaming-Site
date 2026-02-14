@@ -6,7 +6,7 @@
 .navigationBar {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 1000;
   width: 100%;
   background-color: var(--color-bg-darker);
   display: flex;
@@ -98,13 +98,14 @@
 
 /* Search form and inputs (moved from inline styles) */
 .searchBar-form{
+  position: relative;
   display: flex;
   justify-content:center;
   align-items:stretch;
   gap: 8px;
   /* border: 1px solid rgba(255,255,255,0.08); */
   background-color: var(--color-bg-dark);
-  overflow: hidden;
+  overflow: visible;
 border-radius:3.5px;
   /* height: 35px; */
   /* background-color: red; */
@@ -169,6 +170,51 @@ input[type="search"]::-webkit-search-cancel-button {
 .searchBtn:hover{
   color: var(--color-secondary);
   border-color: rgba(255,213,74,0.6);
+}
+
+
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #151515;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 1500;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.search-suggestion-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  border: none;
+  background: transparent;
+  color: #e8e8e8;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.search-suggestion-item:hover,
+.search-suggestion-item.active {
+  background: rgba(225, 3, 31, 0.22);
+}
+
+.search-suggestion-tag {
+  font-size: 12px;
+  text-transform: none;
+}
+
+.search-suggestion-category {
+  font-size: 10px;
+  color: #9f9f9f;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 
 /* toast notification */

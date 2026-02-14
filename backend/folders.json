@@ -9,7 +9,7 @@
     "id": "fmfs8aicj",
     "name": "x:\\",
     "path": "x:\\",
-    "active": true
+    "active": false
   },
   {
     "id": "fmg0a4l6n",
@@ -96,7 +96,7 @@
     "id": "fmkns8aza",
     "name": "previews",
     "path": "L:\\New folder\\New folder\\previews",
-    "active": false,
+    "active": true,
     "count": 8,
     "totalSize": 17154671,
     "formattedSize": "16.36 MB"

@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import FileList from './pages/FileList';
 import VideoPlayer from './pages/VideoPlayer';
@@ -28,6 +27,25 @@ function NavigationBar() {
   const qInit = searchParams.get('q') || '';
 
   const [query, setQuery] = useState(qInit);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchContainerRef = useRef(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/tagCategories`)
+      .then((res) => res.json())
+      .then((data) => {
+        const flattened = [];
+        Object.entries(data || {}).forEach(([category, categoryTags]) => {
+          Object.keys(categoryTags || {}).forEach((tag) => {
+            flattened.push({ tag, category });
+          });
+        });
+        setTagSuggestions(flattened);
+      })
+      .catch(() => setTagSuggestions([]));
+  }, []);
 
   useEffect(() => {
     // update query if user navigates (keeps input in sync)
@@ -36,12 +54,47 @@ function NavigationBar() {
     setQuery(qp);
   }, [location.search]);
 
-  const submitSearch = (e) => {
-    e.preventDefault();
-    const trimmed = (query || '').trim();
-    // navigate to /search with q param and page=1
+  useEffect(() => {
+    const onClickOutside = (event) => {
+      if (!searchContainerRef.current?.contains(event.target)) {
+        setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const filteredSuggestions = useMemo(() => {
+    const trimmed = (query || '').trim().toLowerCase();
+    if (!trimmed) return [];
+
+    return tagSuggestions
+      .filter(({ tag }) => tag.toLowerCase().includes(trimmed))
+      .slice(0, 10);
+  }, [query, tagSuggestions]);
+
+  const goToSearch = (value) => {
+    const trimmed = (value || '').trim();
     const url = trimmed ? `/search?q=${encodeURIComponent(trimmed)}&page=1` : `/search?page=1`;
     navigate(url);
+  };
+
+  const submitSearch = (e) => {
+    e.preventDefault();
+    if (activeSuggestionIndex >= 0 && filteredSuggestions[activeSuggestionIndex]) {
+      const selectedTag = filteredSuggestions[activeSuggestionIndex].tag;
+      setQuery(selectedTag);
+      setShowSuggestions(false);
+      setActiveSuggestionIndex(-1);
+      goToSearch(selectedTag);
+      return;
+    }
+
+    setShowSuggestions(false);
+    setActiveSuggestionIndex(-1);
+    goToSearch(query);
   };
 
   // determine active link classes using pathname (keeps paginated /videos active)
@@ -70,18 +123,67 @@ function NavigationBar() {
 
       <div className="center">
         {/* Search form */}
-        <form onSubmit={submitSearch} className='searchBar-form'>
+        <form onSubmit={submitSearch} className='searchBar-form' ref={searchContainerRef}>
           <input
             type="search"
             placeholder="Search videos..."
             value={query}
             className='search-input'
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search videos"
-            spellCheck="false" 
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setShowSuggestions(true);
+              setActiveSuggestionIndex(-1);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onKeyDown={(e) => {
+              if (!filteredSuggestions.length) return;
 
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setShowSuggestions(true);
+                setActiveSuggestionIndex((prev) => {
+                  const next = prev + 1;
+                  return next >= filteredSuggestions.length ? 0 : next;
+                });
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setShowSuggestions(true);
+                setActiveSuggestionIndex((prev) => {
+                  if (prev <= 0) return filteredSuggestions.length - 1;
+                  return prev - 1;
+                });
+              } else if (e.key === 'Escape') {
+                setShowSuggestions(false);
+                setActiveSuggestionIndex(-1);
+              }
+            }}
+            aria-label="Search videos"
+            spellCheck="false"
+            autoComplete="off"
           />
           <button type="submit" className="searchBtn"><FaSearch /></button>
+
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <div className="search-suggestions" role="listbox" aria-label="Tag suggestions">
+              {filteredSuggestions.map((item, index) => (
+                <button
+                  type="button"
+                  key={`${item.category}-${item.tag}-${index}`}
+                  className={`search-suggestion-item${activeSuggestionIndex === index ? ' active' : ''}`}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    setQuery(item.tag);
+                    setShowSuggestions(false);
+                    setActiveSuggestionIndex(-1);
+                    goToSearch(item.tag);
+                  }}
+                >
+                  <span className="search-suggestion-tag">{item.tag}</span>
+                  <span className="search-suggestion-category">{item.category}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </form>
       </div>
 
@@ -207,4 +309,3 @@ function App() {
 }
 
 export default App;
- 
