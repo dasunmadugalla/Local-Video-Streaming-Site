@@ -1,5 +1,5 @@
 // src/pages/SearchResults.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import VideoPreview from "../components/VideoPreview";
 import {
   FaAngleLeft,
@@ -33,6 +33,8 @@ const SearchResults = () => {
   const [selectedFile, setSelectedFile] = useState("");
   const [tagCategories, setTagCategories] = useState({});
   const [tagInputs, setTagInputs] = useState({});
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectionAnchor, setSelectionAnchor] = useState(null);
 
   // Fetch a page of search results
   const fetchPage = (p, q) => {
@@ -132,6 +134,68 @@ const SearchResults = () => {
     }
   }, [popup]);
 
+  const fileIndexMap = useMemo(() => {
+    const map = new Map();
+    results.forEach((file, idx) => map.set(file, idx));
+    return map;
+  }, [results]);
+
+  useEffect(() => {
+    setSelectedFiles(prev => prev.filter((file) => fileIndexMap.has(file)));
+    if (selectionAnchor && !fileIndexMap.has(selectionAnchor)) {
+      setSelectionAnchor(null);
+    }
+  }, [fileIndexMap, selectionAnchor]);
+
+  const handleSelectionClick = (event, file) => {
+    const isLeftClick = (event.nativeEvent?.button ?? 0) === 0;
+    if (!isLeftClick) return;
+
+    const isCtrlLike = event.ctrlKey || event.metaKey;
+    const isShift = event.shiftKey;
+    if (!isCtrlLike && !isShift) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentIndex = fileIndexMap.get(file);
+    if (typeof currentIndex !== "number") return;
+
+    if (isShift) {
+      const anchorIndex = fileIndexMap.get(selectionAnchor);
+      if (typeof anchorIndex === "number") {
+        const [start, end] = [anchorIndex, currentIndex].sort((a, b) => a - b);
+        const range = results.slice(start, end + 1);
+        setSelectedFiles(prev => Array.from(new Set([...prev, ...range])));
+      } else {
+        setSelectedFiles([file]);
+      }
+      setSelectionAnchor(file);
+      return;
+    }
+
+    setSelectedFiles(prev => (
+      prev.includes(file) ? prev.filter(item => item !== file) : [...prev, file]
+    ));
+    setSelectionAnchor(file);
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest('.videoBoxWrapper')) return;
+
+      setSelectedFiles([]);
+      setSelectionAnchor(null);
+    };
+
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+    };
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil(total / LOAD_COUNT));
 
   const getPageNumbers = () => {
@@ -194,6 +258,8 @@ const SearchResults = () => {
             <VideoPreview
               key={idx}
               file={file}
+              isSelected={selectedFiles.includes(file)}
+              onSelectClick={(e) => handleSelectionClick(e, file)}
               onContextMenu={(e) => {
                 e.preventDefault();
                 openTitleModal(file);

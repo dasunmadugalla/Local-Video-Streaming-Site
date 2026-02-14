@@ -73,6 +73,7 @@ const VideoPlayer = () => {
   const [selectedFile, setSelectedFile] = useState('');
   const [tagCategories, setTagCategories] = useState({});
   const [tagInputs, setTagInputs] = useState({});
+  const [currentVideoDetails, setCurrentVideoDetails] = useState({ title: '', tags: {} });
 
   // controls visibility
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -152,6 +153,21 @@ const VideoPlayer = () => {
       .then(data => setTagCategories(data || {}))
       .catch(() => setTagCategories({}));
   }, []);
+
+  useEffect(() => {
+    if (!decodedName) return;
+    fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(decodedName)}`)
+      .then(res => res.json())
+      .then((data) => {
+        setCurrentVideoDetails({
+          title: (data?.title || '').trim(),
+          tags: data?.tags || {}
+        });
+      })
+      .catch(() => {
+        setCurrentVideoDetails({ title: '', tags: {} });
+      });
+  }, [decodedName]);
 
   // apply playbackRate to video element
   useEffect(() => {
@@ -694,6 +710,14 @@ const VideoPlayer = () => {
           message: data.success ? 'Video updated successfully' : 'Failed to update video',
           type: data.success ? 'success' : 'error'
         });
+
+        if (data.success && selectedFile === decodedName) {
+          setCurrentVideoDetails({
+            title: titleInput.trim(),
+            tags
+          });
+        }
+
         setShowTitleModal(false);
       })
       .catch(() => {
@@ -726,6 +750,15 @@ const VideoPlayer = () => {
   };
 
   // Render
+  const displayTitle = currentVideoDetails.title || decodedName;
+  const currentVideoTags = currentVideoDetails.tags || {};
+  const displayedCategories = [
+    ...new Set([
+      ...Object.keys(tagCategories || {}),
+      ...Object.keys(currentVideoTags || {})
+    ])
+  ];
+
   return (
     <div className='container-wrapper'>
       {/* hidden subtitle file input */}
@@ -830,7 +863,24 @@ const VideoPlayer = () => {
             />
           </div>
         </div>
-        <div className="actionsRow">hello</div>
+        <div className="actionsRow">
+          <div className="videoMeta">
+            <h2 className="videoMetaTitle">{displayTitle}</h2>
+            <div className="videoMetaCategories">
+              {displayedCategories.map((category) => {
+                const tags = currentVideoTags[category] || [];
+                return (
+                  <div key={category} className="videoMetaCategory">
+                    <span className="videoMetaCategoryName">{category} - </span>
+                    <span className="videoMetaCategoryTags">
+                      {tags.length ? tags.join(', ') : 'No tags'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
       {popup.message && (

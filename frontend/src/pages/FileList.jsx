@@ -343,9 +343,7 @@ const FileList = ({ isHome }) => {
     }
   }, [fileIndexMap, selectionAnchor]);
 
-  const handleHomeSelectionClick = (event, file) => {
-    if (!isHome) return;
-
+  const handleSelectionClick = (event, file) => {
     const isLeftClick = (event.nativeEvent?.button ?? 0) === 0;
     if (!isLeftClick) return;
 
@@ -381,8 +379,6 @@ const FileList = ({ isHome }) => {
   };
 
   useEffect(() => {
-    if (!isHome) return;
-
     const handleOutsideClick = (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -397,7 +393,7 @@ const FileList = ({ isHome }) => {
     return () => {
       document.removeEventListener('pointerdown', handleOutsideClick);
     };
-  }, [isHome]);
+  }, []);
 
   const startIndex = (allCount && allCount > 0) ? ((page - 1) * LOAD_COUNT + 1) : (visibleFiles.length > 0 ? ((page - 1) * LOAD_COUNT + 1) : 0);
   const endIndex = (allCount && allCount > 0) ? Math.min(page * LOAD_COUNT, allCount) : (visibleFiles.length ? ((page - 1) * LOAD_COUNT + visibleFiles.length) : 0);
@@ -431,7 +427,7 @@ const FileList = ({ isHome }) => {
               key={index}
               file={file}
               isSelected={selectedFiles.includes(file)}
-              onSelectClick={isHome ? (e) => handleHomeSelectionClick(e, file) : undefined}
+              onSelectClick={(e) => handleSelectionClick(e, file)}
               onContextMenu={(e) => {
                 e.preventDefault();
                 if (selectedFiles.length > 0 && selectedFiles.includes(file)) {

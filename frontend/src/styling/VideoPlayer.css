@@ -58,21 +58,21 @@
 /* ==== Controls Wrapper ==== */
 /* Controls base - visible state (JS will toggle .controls-hidden) */
 .controls {
+
   position: absolute;
   bottom: 0;
-  width: 100%;
+  width: 90%;
   padding: 0 1px;
   box-sizing: border-box;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
   color: white;
-
   /* visible by default; JS will add .controls-hidden to hide */
   opacity: 1;
   transform: translateY(0);
   transition: opacity 220ms ease, transform 700ms ease;
   transition-delay: 0s, 0s; /* show immediately when revealed by JS */
   pointer-events: auto;
-  z-index: 1000;
+  z-index: 10;
 }
 
 /* Hidden state */
@@ -103,7 +103,7 @@
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  height: 4px;
+  height: 2.5px;
   background: transparent;
   border-radius: 5px;
   outline: none;
@@ -160,7 +160,7 @@ input.progressBar {
 .hover-preview {
   position: absolute;
   bottom: 5em;
-  transform: translate(-25%, -50%);
+  transform: translate(-50%, 0%);
   background: var(--preview_color);
   color: white;
   font-size: 12px;
@@ -202,6 +202,7 @@ input.progressBar {
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 0;
 }
 
 /* Left & Right Controllers */
@@ -315,8 +316,52 @@ input.volumeBar::-moz-range-progress {
 .actionsRow {
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 0;
+  align-items: flex-start;
+  padding: 1rem 2rem;
+  margin: 1rem 0;
+  background-color: #0b0b0b;
+
+}
+
+.videoMeta {
+  width: 100%;
+  color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.videoMetaTitle {
+  font-size: 14px;
+  word-break: break-word;
+  font-weight: 600;
+  margin: 0;
+}
+
+.videoMetaCategories {
+  display: flex;
+  font-size: 12px;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.videoMetaCategory {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+  /* font-size: 0.95rem; */
+}
+
+.videoMetaCategoryName {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.videoMetaCategoryTags {
+  color: var(--secondary_color);
+  text-transform: capitalize;
 }
 
 /* ==== Next Previews ==== */
@@ -395,17 +440,13 @@ input.volumeBar::-moz-range-progress {
 .leftControllers {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 25px;
+  margin: 5px 0;
 }
-
-
-
 
 /* Specific sizes */
 .playBtn {
   padding: 0;
-  width: 44px;
-  height: 44px;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
@@ -420,11 +461,6 @@ input.volumeBar::-moz-range-progress {
   gap: 6px;
   display: inline-flex;
   align-items: center;
-}
-
-/* control button smaller padding for left/right */
-.controlBtn {
-  padding: 8px;
 }
 
 /* screen button */
@@ -479,14 +515,14 @@ input.volumeBar::-moz-range-progress {
 .rightControllers {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 25px;
   position: relative;
 }
 
 /* time text */
 .timeDisplay {
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 /* speed label inside button */

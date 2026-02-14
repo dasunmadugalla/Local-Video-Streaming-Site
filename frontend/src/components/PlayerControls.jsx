@@ -110,15 +110,15 @@ const PlayerControls = ({
   return (
     <div className="controls-row">
       <div className="leftControllers">
-        <button onClick={onPrev} className="btn controlBtn" aria-label="Rewind 10s">
+        <button onClick={onPrev} className="controlBtn" aria-label="Rewind 10s">
           <FaBackward />
         </button>
 
-        <button onClick={togglePlay} className="btn controlBtn playBtn" aria-label="Play/Pause">
+        <button onClick={togglePlay} className="controlBtn playBtn" aria-label="Play/Pause">
           {ended ? <FaUndo /> : (playing ? <FaPause /> : <FaPlay />)}
         </button>
 
-        <button onClick={onNext} className="btn controlBtn" aria-label="Forward 10s">
+        <button onClick={onNext} className="controlBtn" aria-label="Forward 10s">
           <FaForward />
         </button>
 
