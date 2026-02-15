@@ -3,7 +3,7 @@
     "id": "fmfs3pz84",
     "name": "Downloads",
     "path": "C:\\Users\\dasun\\Downloads",
-    "active": false
+    "active": true
   },
   {
     "id": "fmfs8aicj",
@@ -96,7 +96,7 @@
     "id": "fmkns8aza",
     "name": "previews",
     "path": "L:\\New folder\\New folder\\previews",
-    "active": true,
+    "active": false,
     "count": 8,
     "totalSize": 17154671,
     "formattedSize": "16.36 MB"
