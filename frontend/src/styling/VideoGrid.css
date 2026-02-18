@@ -4,8 +4,10 @@
   flex-direction: column;
   justify-content: center;
   align-content: center;
-  width: 95vw;
-  margin: 20px auto;
+  width: 100%;
+  padding: 0 2.5vw;
+  margin: 2em auto;
+  box-sizing: border-box;
   /* background-color: lightblue; */
   /* gap: 5em; */
 }
@@ -15,17 +17,20 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   box-sizing: border-box;
-  gap: 10px;
+  gap: 2rem .8rem;
 }
 
 /* === videoBoxWrapper (Outer Most Div) === */
 .videoBoxWrapper {
+  font-size: .825rem;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   align-items: center;
   overflow: hidden;
   border: 2px solid transparent;
+  /* background-color: rgb(255, 255, 255); */
+  color: white !important;
 }
 .selectedPreview{
   border: 2px solid var(  --color-secondary);
@@ -61,7 +66,8 @@
 .videoBox .videoInner {
   position: relative;
   width: 100%;
-  height: 15em; /* thumbnail height (keeps previous look) */
+  aspect-ratio: 16/9;
+  /* height: auto; thumbnail height (keeps previous look) */
   display: block;
 }
 
@@ -75,18 +81,20 @@
 
 /* === title (Below the Video) === */
 .title {
-  font-size: 10px;
+  /* font-size: 10px; */
   color: grey;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   word-break: break-word;
-  text-align: center;
+  text-align: left;
   margin: 0;
-  padding: 0.3em 0;
-  width: 100%;
+  padding-top: .75rem;
+  padding-bottom: .5rem;
+  width: 95%;
   transition: color 0.5s ease;
+  /* background-color: blue; */
 }
 
 .videoBoxWrapper:hover .title {
@@ -120,8 +128,9 @@
 /* top-right resolution badge */
 .videoQualityOverlay {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 0;
+  right: 0;
+  margin: 5px;
   pointer-events: none;
   display: inline-flex;
   align-items: center;
@@ -144,8 +153,9 @@
 /* bottom-right duration badge */
 .videoDurationOverlay {
   position: absolute;
-  bottom: 6px;
-  right: 6px;
+  bottom: 0;
+  right: 0;
+  margin: 5px;
   pointer-events: none;
   display: inline-flex;
   align-items: center;
@@ -159,20 +169,24 @@
 }
 
 /* responsive tweaks */
-@media (max-width: 500px) {
-  .videoBox .videoInner { 
-  height: 18em;
-  width: 100%;
-   } /* slightly smaller on small screens */
+@media (max-width:1000px) {
+  .subContainer{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+ /* slightly smaller on small screens */
   .videoQualityOverlay, .videoDurationOverlay {
+    padding: 10px;
     padding: 3px 6px;
-    font-size: 10px;
-    border-radius: 5px;
+    font-size: .9rem;
+    border-radius: 2.5px;
   }
 
   .subContainer {
     grid-template-columns: 1fr;
-  }z
+    margin: 0 -2.5vw;
+  }
 }
 
 /* Optional: smooth fade-in and fade-out animation */
@@ -194,3 +208,41 @@
 .videoBoxWrapper.selectedPreview .title {
   color: #ffffff;
 } */
+
+
+.previewTagsWrap {
+  width: 95%;
+  display: flex;
+  flex-direction: column;
+  /* gap: 2px; */
+  /* background-color: red; */
+  justify-content: center;
+  align-items: baseline;
+}
+
+.previewTagLine {
+  margin: 0;
+  /* font-size: 10px; */
+  color: #9f9f9f;
+  /* overflow: hidden; */
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.previewTagCategory {
+  color: #d6d6d6;
+  text-transform: capitalize;
+}
+
+.previewTagLink {
+  color: #9f9f9f;
+  text-decoration: none;
+  padding: 1.5px 5px;
+  background: rgb(36, 36, 36);
+}
+
+.previewTagLink:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}

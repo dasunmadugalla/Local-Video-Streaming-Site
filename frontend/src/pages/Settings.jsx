@@ -5,12 +5,17 @@ import { FaRegTrashAlt  } from "react-icons/fa";
 import ScrollToggleButton from '../components/ScrollToggleButton';
 import '../styling/Settings.css';
 
+const PREVIEW_TAG_CATEGORIES_KEY = 'previewTagCategories';
+const MAX_PREVIEW_TAG_CATEGORIES = 2;
+
 function Settings() {
   const [folders, setFolders] = useState([]);
   const [newPath, setNewPath] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [tagCategories, setTagCategories] = useState({});
+  const [selectedPreviewCategories, setSelectedPreviewCategories] = useState([]);
 
   // get context setter so we can clear the shuffled cache after changes
   const { setShuffledCache } = useContext(FileContext);
@@ -32,6 +37,25 @@ function Settings() {
 
   useEffect(() => {
     fetchFolders();
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/tagCategories`)
+      .then((res) => res.json())
+      .then((data) => setTagCategories(data || {}))
+      .catch(() => setTagCategories({}));
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PREVIEW_TAG_CATEGORIES_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        setSelectedPreviewCategories(parsed.slice(0, MAX_PREVIEW_TAG_CATEGORIES));
+      }
+    } catch {
+      setSelectedPreviewCategories([]);
+    }
   }, []);
 
   const addFolder = (pathToAdd) => {
@@ -68,6 +92,43 @@ function Settings() {
     setFolders(prev => prev.map(f => f.id === id ? { ...f, active: !f.active } : f));
   };
 
+  const togglePreviewCategory = (category) => {
+    setSelectedPreviewCategories((prev) => {
+      if (prev.includes(category)) {
+        return prev.filter((item) => item !== category);
+      }
+
+      if (prev.length >= MAX_PREVIEW_TAG_CATEGORIES) {
+        setMessage('You can select up to 2 tag categories for preview display.');
+        return prev;
+      }
+
+      return [...prev, category];
+    });
+  };
+
+  const savePreviewTagCategories = () => {
+    try {
+      localStorage.setItem(PREVIEW_TAG_CATEGORIES_KEY, JSON.stringify(selectedPreviewCategories));
+
+      try {
+        const bc = new BroadcastChannel('app_updates');
+        bc.postMessage({ type: 'previewTagCategoriesChanged', categories: selectedPreviewCategories });
+        bc.close();
+      } catch {
+        // BroadcastChannel is optional
+      }
+
+      window.dispatchEvent(new CustomEvent('preview_tag_categories_changed', {
+        detail: selectedPreviewCategories
+      }));
+
+      setMessage('Preview tag display settings saved.');
+    } catch {
+      setMessage('Failed to save preview tag display settings.');
+    }
+  };
+
   const deleteFolder = (id) => {
     if (!window.confirm('Remove this folder from the list?')) return;
     fetch(`${API_BASE}/api/folders/${id}`, { method: 'DELETE' })
@@ -96,14 +157,14 @@ function Settings() {
         if (!res.ok) throw new Error(data.error || 'Save failed');
 
         // 1) Clear client-side shuffled cache so FileList will re-fetch fresh list
-        try { setShuffledCache([]); } catch (e) { /* ignore if undefined */ }
+        try { setShuffledCache([]); } catch { /* ignore if undefined */ }
 
         // 2) Broadcast an update so any other tabs/components will re-fetch as well
         try {
           const bc = new BroadcastChannel('app_updates');
           bc.postMessage({ type: 'foldersChanged' });
           bc.close();
-        } catch (e) {
+        } catch {
           // older browsers may fail; it's fine
         }
 
@@ -124,6 +185,8 @@ function Settings() {
       toggleActive(id);
     }
   };
+
+  const categoryNames = Object.keys(tagCategories || {});
 
   return (
     <div className="mainContainer settings-container">
@@ -157,6 +220,36 @@ function Settings() {
         </div>
 
         {message && <div className="settings-message">{message}</div>}
+      </div>
+
+      <div className="settings-preview-tags-panel">
+        <h3>Video Preview Tag Display</h3>
+        <p className="settings-tip">Select up to 2 categories to show tags under each video preview title.</p>
+
+        {categoryNames.length === 0 ? (
+          <div className="no-folders">No tag categories found.</div>
+        ) : (
+          <div className="settings-category-options">
+            {categoryNames.map((category) => {
+              const checked = selectedPreviewCategories.includes(category);
+              const disabled = !checked && selectedPreviewCategories.length >= MAX_PREVIEW_TAG_CATEGORIES;
+
+              return (
+                <label key={category} className={`settings-category-option${disabled ? ' disabled' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => togglePreviewCategory(category)}
+                  />
+                  <span>{category}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+
+        <button className="btn classic" onClick={savePreviewTagCategories}>Save Preview Tag Display</button>
       </div>
 
       <div className="folders-panel">

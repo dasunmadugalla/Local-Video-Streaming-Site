@@ -10,6 +10,7 @@ import Settings from './pages/Settings';
 import LibraryManager from './pages/LibraryManager';
 import Access from './pages/Access';
 import SearchResults from './pages/SearchResults';
+import TagResults from './pages/TagResults';
 import { API_BASE } from './utils/api'; // keep using API_BASE
 
 // Helper to read session cookie
@@ -289,6 +290,7 @@ function AppContent() {
         <Route path="/videos" element={<FileList isHome={false} />} />
         <Route path="/watch/:fileName" element={<VideoPlayer />} />
         <Route path="/search" element={<SearchResults />} />
+        <Route path="/tag/:tagName" element={<TagResults />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/library" element={<LibraryManager />} />
         <Route path="/access" element={<Access />} />

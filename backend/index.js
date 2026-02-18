@@ -1,3 +1,5 @@
+// import dotenv from "dotenv";
+// dotenv.config();
 // server.js
 const express = require('express');
 const cors = require('cors');
@@ -7,6 +9,7 @@ const createPrimaryDBHandler = require('./primaryDb/dbHandler');
 
 const app = express();
 const port = 3000;
+// const PASSCODE = process.env.PASSWORD;
 const PASSCODE = "197944";
 
 app.use(cors());
@@ -422,6 +425,40 @@ app.get('/random', (req, res) => {
   }
   res.json(shuffled.slice(0, parseInt(limit)));
 });
+
+app.get('/tag/:tagName', (req, res) => {
+  const { tagName } = req.params;
+  const { offset = 0, limit = 15 } = req.query;
+
+  const wantedTag = normalizeText(decodeURIComponent(tagName || ''));
+  if (!wantedTag) {
+    return res.json({ total: 0, files: [] });
+  }
+
+  const all = getAllFilesFromActiveFolders();
+  const primaryDB = readPrimaryDB();
+  const videos = primaryDB.videos || {};
+
+  const matched = all.filter((it) => {
+    const meta = resolveVideoMeta(videos, it.encodedName, it.fileName);
+    const tagsObj = (meta && typeof meta.tags === 'object') ? meta.tags : {};
+
+    return Object.values(tagsObj).some((tagList) => {
+      if (!Array.isArray(tagList)) return false;
+      return tagList.some(tag => normalizeText(tag) === wantedTag);
+    });
+  });
+
+  matched.sort((a, b) => a.fileName.toLowerCase().localeCompare(b.fileName.toLowerCase()));
+
+  const total = matched.length;
+  const start = parseInt(offset);
+  const limitNum = parseInt(limit);
+  const paginated = matched.slice(start, start + limitNum).map(it => it.encodedName);
+
+  res.json({ total, files: paginated });
+});
+
 
 /* ---------- Video streaming endpoint (supports Range) ---------- */
 

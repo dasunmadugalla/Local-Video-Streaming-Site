@@ -45,9 +45,6 @@ const VideoPlayer = () => {
   const isVerticalDraggingRef = useRef(false);
   const startVolumeRef = useRef(1);
 
-  // subtitle file input ref
-  const subtitleInputRef = useRef(null);
-
   // controls hide timer ref
   const hideControlsTimeoutRef = useRef(null);
 
@@ -77,20 +74,17 @@ const VideoPlayer = () => {
 
   // controls visibility
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [isPlayerActive, setIsPlayerActive] = useState(true);
 
   // playback speed
   const [playbackRate, setPlaybackRate] = useState(1);
-
-  // subtitles state
-  const [subtitleTrack, setSubtitleTrack] = useState(null); // { src, label, isLocalBlob }
-  const [subtitleEnabled, setSubtitleEnabled] = useState(true);
-  const [subtitleLabel, setSubtitleLabel] = useState('');
 
   // UI skip indicator
   const [skipIndicator, setSkipIndicator] = useState({ visible: false, text: '' });
 
   // buffering indicator
   const [buffering, setBuffering] = useState(false);
+  const [bufferedPercent, setBufferedPercent] = useState(0);
 
   // Debug log (optional)
   useEffect(() => {
@@ -180,7 +174,7 @@ const VideoPlayer = () => {
     if (v) {
       v.volume = volume;
       if (volumeRef.current) volumeRef.current.style.setProperty('--volume-percent', `${volume * 100}%`);
-      try { localStorage.setItem('globalVolume', volume); } catch (e) {}
+      try { localStorage.setItem('globalVolume', volume); } catch {}
     }
   }, [volume]);
 
@@ -216,12 +210,14 @@ const VideoPlayer = () => {
     };
   }, []); // intentionally run once
 
-  // keyboard shortcuts (also reveal controls on key activity)
+  // keyboard shortcuts are active only when player is active
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleKeyDown = (e) => {
+      if (!isPlayerActive) return;
+
       showControls();
       switch (e.code) {
         case 'Space':
@@ -257,7 +253,19 @@ const VideoPlayer = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [muted, fullscreen, ended]); // rebind when these change
+  }, [isPlayerActive, muted, fullscreen, ended]); // rebind when these change
+
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      const container = containerRef.current;
+      if (!container) return;
+      setIsPlayerActive(container.contains(event.target));
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, []);
 
   const changeVolume = (delta) => {
     setVolume(prev => {
@@ -337,135 +345,29 @@ const VideoPlayer = () => {
     showSkipIndicator(`${sign}${skipAccumulatorRef.current.amount}s`);
   };
 
-  // ----------------------
-  // Subtitles: auto-load or upload
-  // ----------------------
+  const syncProgressBar = () => {
+    const v = videoRef.current;
+    if (!v) return;
 
-  const srtToVtt = (srtText) => {
-    const vttLines = ['WEBVTT\n\n'];
-    const lines = srtText.replace(/\r/g, '').split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      if (line.includes('-->')) {
-        line = line.replace(/,/g, '.');
+    const played = v.duration ? (v.currentTime / v.duration) * 100 : 0;
+    let buffered = played;
+
+    if (v.duration && v.buffered?.length) {
+      try {
+        const bufferedEnd = v.buffered.end(v.buffered.length - 1);
+        buffered = Math.max(played, (bufferedEnd / v.duration) * 100);
+      } catch {
+        buffered = played;
       }
-      vttLines.push(line + '\n');
-    }
-    return vttLines.join('');
-  };
-
-  useEffect(() => {
-    let aborted = false;
-    let localBlobUrl = null;
-
-    const tryFetch = async () => {
-      if (!decodedName) return;
-      const base = decodedName.replace(/\.[^/.]+$/, '');
-      const candidates = [
-        `${API_BASE}/videos/${encodeURIComponent(base)}.vtt`,
-        `${API_BASE}/videos/${encodeURIComponent(base)}.srt`
-      ];
-
-      for (const url of candidates) {
-        try {
-          const resp = await fetch(url);
-          if (!resp.ok) continue;
-          const text = await resp.text();
-          if (aborted) return;
-          if (url.endsWith('.vtt')) {
-            setSubtitleTrack({ src: url, label: `${base}.vtt`, isLocalBlob: false });
-            setSubtitleLabel(`${base}.vtt`);
-            setSubtitleEnabled(true);
-            return;
-          } else if (url.endsWith('.srt')) {
-            const vtt = srtToVtt(text);
-            const blob = new Blob([vtt], { type: 'text/vtt' });
-            localBlobUrl = URL.createObjectURL(blob);
-            setSubtitleTrack({ src: localBlobUrl, label: `${base}.srt`, isLocalBlob: true });
-            setSubtitleLabel(`${base}.srt`);
-            setSubtitleEnabled(true);
-            return;
-          }
-        } catch (e) {
-          // ignore and try next
-        }
-      }
-      setSubtitleTrack(null);
-      setSubtitleLabel('');
-      setSubtitleEnabled(false);
-    };
-
-    tryFetch();
-
-    return () => {
-      aborted = true;
-      if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
-    };
-  }, [decodedName]);
-
-  // Handle file upload for subtitles
-  const onSubtitleUploadClick = () => {
-    if (subtitleInputRef.current) subtitleInputRef.current.click();
-  };
-
-  const handleSubtitleFile = async (file) => {
-    if (!file) return;
-    const text = await file.text();
-    let vttText = text;
-    if (file.name.toLowerCase().endsWith('.srt')) {
-      vttText = srtToVtt(text);
-    } else if (!file.name.toLowerCase().endsWith('.vtt')) {
-      vttText = text;
-    }
-    const blob = new Blob([vttText], { type: 'text/vtt' });
-    const url = URL.createObjectURL(blob);
-
-    if (subtitleTrack && subtitleTrack.isLocalBlob && subtitleTrack.src) {
-      try { URL.revokeObjectURL(subtitleTrack.src); } catch (e) {}
     }
 
-    setSubtitleTrack({ src: url, label: file.name, isLocalBlob: true });
-    setSubtitleLabel(file.name);
-    setSubtitleEnabled(true);
-  };
+    setBufferedPercent(Math.min(100, buffered));
 
-  const onSubtitleFileInput = (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (f) handleSubtitleFile(f);
-    e.target.value = '';
-  };
-
-  const toggleSubtitle = () => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    const tracks = vid.textTracks || [];
-    if (!subtitleTrack) {
-      setSubtitleEnabled(false);
-      return;
+    if (progressRef.current) {
+      progressRef.current.value = played;
+      progressRef.current.style.setProperty('--played-percent', `${played}%`);
+      progressRef.current.style.setProperty('--buffered-percent', `${Math.min(100, buffered)}%`);
     }
-    for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'hidden';
-    setTimeout(() => {
-      const tks = vid.textTracks || [];
-      let found = null;
-      for (let i = 0; i < tks.length; i++) {
-        if (tks[i].label === subtitleLabel || tks[i].language === subtitleLabel) {
-          found = tks[i];
-          break;
-        }
-      }
-      if (!found && tks.length > 0) found = tks[0];
-      if (found) {
-        if (subtitleEnabled) {
-          found.mode = 'hidden';
-          setSubtitleEnabled(false);
-        } else {
-          found.mode = 'showing';
-          setSubtitleEnabled(true);
-        }
-      } else {
-        setSubtitleEnabled(prev => !prev);
-      }
-    }, 100);
   };
 
   // ---- Buffering & play/pause syncing (includes the play/pause fix) ----
@@ -485,8 +387,10 @@ const VideoPlayer = () => {
     const onCanPlay = stopBufferingAndMaybeHide;
     const onPlaying = () => { stopBufferingAndMaybeHide(); setPlaying(true); setEnded(false); };
     const onCanPlayThrough = stopBufferingAndMaybeHide;
-    const onLoadedData = stopBufferingAndMaybeHide;
+    const onLoadedData = () => { stopBufferingAndMaybeHide(); syncProgressBar(); };
     const onSeeked = stopBufferingAndMaybeHide;
+    const onProgress = () => syncProgressBar();
+    const onDurationChange = () => syncProgressBar();
     const onError = () => { stopBufferingAndMaybeHide(); };
 
     // NEW: sync play/pause events so UI reflects actual element state
@@ -508,6 +412,8 @@ const VideoPlayer = () => {
     vid.addEventListener('canplaythrough', onCanPlayThrough);
     vid.addEventListener('loadeddata', onLoadedData);
     vid.addEventListener('seeked', onSeeked);
+    vid.addEventListener('progress', onProgress);
+    vid.addEventListener('durationchange', onDurationChange);
     vid.addEventListener('error', onError);
 
     vid.addEventListener('play', onPlay);
@@ -518,6 +424,7 @@ const VideoPlayer = () => {
 
     // Also set initial playing state to reflect the element (useful when changing src)
     setPlaying(!vid.paused && !vid.ended);
+    syncProgressBar();
 
     return () => {
       vid.removeEventListener('waiting', onWaiting);
@@ -528,6 +435,8 @@ const VideoPlayer = () => {
       vid.removeEventListener('canplaythrough', onCanPlayThrough);
       vid.removeEventListener('loadeddata', onLoadedData);
       vid.removeEventListener('seeked', onSeeked);
+      vid.removeEventListener('progress', onProgress);
+      vid.removeEventListener('durationchange', onDurationChange);
       vid.removeEventListener('error', onError);
 
       vid.removeEventListener('play', onPlay);
@@ -568,12 +477,9 @@ const VideoPlayer = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, buffering, volumeDisplay, skipIndicator.visible]);
 
-  // cleanup any local blob when component unmounts or track changes
+  // cleanup timers when component unmounts
   useEffect(() => {
     return () => {
-      if (subtitleTrack && subtitleTrack.isLocalBlob && subtitleTrack.src) {
-        try { URL.revokeObjectURL(subtitleTrack.src); } catch (e) {}
-      }
       if (skipClearTimeoutRef.current) clearTimeout(skipClearTimeoutRef.current);
       if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current);
       clearHideTimer();
@@ -583,6 +489,7 @@ const VideoPlayer = () => {
 
   // Touch handlers (vertical drag & double-tap left/right / single tap)
   const handleTouchStart = (e) => {
+    setIsPlayerActive(true);
     const touch = (e.touches && e.touches[0]);
     if (!touch) return;
     touchStartYRef.current = touch.clientY;
@@ -616,7 +523,7 @@ const VideoPlayer = () => {
       setVolume(newVol);
       setVolumePercent(Math.round(newVol * 100));
       if (volumeRef.current) {
-        try { volumeRef.current.value = newVol; } catch (err) {}
+        try { volumeRef.current.value = newVol; } catch {}
         volumeRef.current.style?.setProperty('--volume-percent', `${newVol * 100}%`);
       }
     }
@@ -742,11 +649,7 @@ const VideoPlayer = () => {
     const v = videoRef.current;
     if (!v) return;
     setCurrentTime(v.currentTime);
-    const percent = v.duration ? (v.currentTime / v.duration) * 100 : 0;
-    if (progressRef.current) {
-      progressRef.current.value = percent;
-      progressRef.current.style.setProperty('--played-percent', `${percent}%`);
-    }
+    syncProgressBar();
   };
 
   // Render
@@ -761,20 +664,14 @@ const VideoPlayer = () => {
 
   return (
     <div className='container-wrapper'>
-      {/* hidden subtitle file input */}
-      <input
-        ref={subtitleInputRef}
-        type="file"
-        accept=".vtt,.srt,text/vtt,text/plain"
-        className="hidden-file-input"
-        onChange={onSubtitleFileInput}
-      />
-
       <div className="current-video">
         <div
           className="custom-player"
           ref={containerRef}
+          tabIndex={0}
+          onFocus={() => setIsPlayerActive(true)}
           onClick={(e) => {
+            setIsPlayerActive(true);
             // desktop click toggles immediately; on touch devices taps are handled in touchend
             if ((e.nativeEvent && e.nativeEvent.pointerType === 'touch') || ('ontouchstart' in window)) {
               return;
@@ -790,23 +687,14 @@ const VideoPlayer = () => {
             src={videoSrc}
             crossOrigin="anonymous"
             autoPlay
-            onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+            onLoadedMetadata={() => {
+              setDuration(videoRef.current?.duration || 0);
+              syncProgressBar();
+            }}
             onTimeUpdate={handleTimeUpdate}
             style={{ background: 'black' }}
             controls={false}
-          >
-            {/* attach track element if we have subtitleTrack */}
-            {subtitleTrack && subtitleTrack.src && (
-              <track
-                key={subtitleTrack.src}
-                src={subtitleTrack.src}
-                kind="subtitles"
-                srcLang="en"
-                label={subtitleLabel || 'subs'}
-                default={subtitleEnabled}
-              />
-            )}
-          </video>
+          />
 
           {/* BUFFERING SPINNER */}
           {buffering && (
@@ -835,6 +723,7 @@ const VideoPlayer = () => {
               hoverPreviewRef={hoverPreviewRef}
               previewTimeRef={previewTimeRef}
               videoRef={videoRef}
+              bufferedPercent={bufferedPercent}
             />
             <PlayerControls
               playing={playing}
@@ -856,10 +745,6 @@ const VideoPlayer = () => {
               changeVolume={changeVolume}
               playbackRate={playbackRate}
               setPlaybackRate={setPlaybackRate}
-              subtitleLabel={subtitleLabel}
-              subtitleEnabled={subtitleEnabled}
-              onSubtitleUploadClick={onSubtitleUploadClick}
-              toggleSubtitle={toggleSubtitle}
             />
           </div>
         </div>
@@ -873,7 +758,20 @@ const VideoPlayer = () => {
                   <div key={category} className="videoMetaCategory">
                     <span className="videoMetaCategoryName">{category} - </span>
                     <span className="videoMetaCategoryTags">
-                      {tags.length ? tags.join(', ') : 'No tags'}
+                      {tags.length ? (
+                        tags.map((tag, index) => (
+                          <React.Fragment key={`${category}-${tag}-${index}`}>
+                            <button
+                              type="button"
+                              className="videoTagLink"
+                              onClick={() => navigate(`/tag/${encodeURIComponent(tag)}?page=1`)}
+                            >
+                              {tag}
+                            </button>
+                            {index < tags.length - 1 ? ', ' : ''}
+                          </React.Fragment>
+                        ))
+                      ) : 'No tags'}
                     </span>
                   </div>
                 );

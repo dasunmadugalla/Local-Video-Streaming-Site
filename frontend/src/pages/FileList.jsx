@@ -7,7 +7,7 @@ import TagModal from '../components/TagModal';
 import '../styling/VideoGrid.css';
 import { API_BASE } from '../utils/api';
 
-const LOAD_COUNT = 15;
+const LOAD_COUNT = 18;
 
 const normalizeToEncodedStrings = (arr) => {
   if (!Array.isArray(arr)) return [];

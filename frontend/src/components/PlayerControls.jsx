@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   FaPlay, FaPause, FaExpand, FaCompress,
   FaVolumeUp, FaVolumeMute, FaUndo,
-  FaClosedCaptioning, FaTachometerAlt, FaCheck,
+  FaTachometerAlt,
   FaBackward, FaForward
 } from 'react-icons/fa';
 import '../styling/VideoPlayer.css';
@@ -11,20 +11,16 @@ const PlayerControls = ({
   playing, ended, muted, fullscreen, currentTime, duration, volume,
   videoRef, volumeRef, setPlaying, setMuted, setFullscreen, setVolume, setVolumePercent, setEnded, containerRef, changeVolume,
   playbackRate, setPlaybackRate,
-  subtitleLabel, subtitleEnabled, onSubtitleUploadClick, toggleSubtitle,
-  onPrev, onNext, pipActive, onTogglePip
+  onPrev, onNext
 }) => {
   const [speedOpen, setSpeedOpen] = useState(false);
-  const [ccOpen, setCcOpen] = useState(false);
   const speedRef = useRef(null);
-  const ccRef = useRef(null);
 
   const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   useEffect(() => {
     const handleDocClick = (e) => {
       if (speedRef.current && !speedRef.current.contains(e.target)) setSpeedOpen(false);
-      if (ccRef.current && !ccRef.current.contains(e.target)) setCcOpen(false);
     };
     document.addEventListener('pointerdown', handleDocClick);
     return () => document.removeEventListener('pointerdown', handleDocClick);
@@ -37,7 +33,7 @@ const PlayerControls = ({
         volumeRef.current.value = volume;
         volumeRef.current.style.setProperty('--volume-percent', `${volume * 100}%`);
       }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }, [volume, volumeRef]);
 
   const togglePlay = () => {
@@ -64,7 +60,7 @@ const PlayerControls = ({
     const vol = parseFloat(e.target.value);
     setVolume(vol);
     setVolumePercent(Math.round(vol * 100));
-    try { if (volumeRef.current) volumeRef.current.value = vol; } catch (e) {}
+    try { if (volumeRef.current) volumeRef.current.value = vol; } catch {}
     volumeRef.current?.style?.setProperty('--volume-percent', `${vol * 100}%`);
     if (typeof changeVolume === 'function') changeVolume(vol);
   };
@@ -83,28 +79,9 @@ const PlayerControls = ({
 
   const onSpeedSelect = (val) => {
     setPlaybackRate(val);
-    try { localStorage.setItem('playbackRate', String(val)); } catch (e) {}
+    try { localStorage.setItem('playbackRate', String(val)); } catch {}
     if (videoRef?.current) videoRef.current.playbackRate = val;
     setSpeedOpen(false);
-  };
-
-  const onCcClick = () => {
-    setCcOpen(prev => !prev);
-    setSpeedOpen(false);
-  };
-
-  const onToggleCc = () => {
-    if (typeof toggleSubtitle === 'function') toggleSubtitle();
-  };
-
-  const onSelectFile = () => {
-    if (typeof onSubtitleUploadClick === 'function') onSubtitleUploadClick();
-    setCcOpen(false);
-  };
-
-  const truncateLabel = (label, max = 30) => {
-    if (!label) return '';
-    return label.length > max ? label.slice(0, max - 3) + '...' : label;
   };
 
   return (
@@ -148,7 +125,7 @@ const PlayerControls = ({
             className="btn small"
             aria-haspopup="true"
             aria-expanded={speedOpen}
-            onClick={() => { setSpeedOpen(prev => !prev); setCcOpen(false); }}
+            onClick={() => { setSpeedOpen(prev => !prev); }}
             title={`Playback speed (${playbackRate}x)`}
           >
             <FaTachometerAlt />
@@ -174,53 +151,6 @@ const PlayerControls = ({
 )}
 
         </div>
-
-        <div ref={ccRef} className="ccWrapper">
-          <button
-            className={`btn small ccBtn ${subtitleEnabled ? 'cc-enabled' : ''}`}
-            onClick={onCcClick}
-            aria-haspopup="true"
-            aria-expanded={ccOpen}
-            title="Subtitles — click to open menu"
-          >
-            <FaClosedCaptioning />
-          </button>
-
-          {ccOpen && (
-            <div role="menu" className="popupMenu ccMenu">
-              <div className="ccColumn">
-                <button
-                  onClick={onToggleCc}
-                  role="menuitem"
-                  className="menuItem"
-                >
-                  <span>{subtitleEnabled ? 'Turn captions off' : 'Turn captions on'}</span>
-                  {subtitleEnabled ? <FaCheck /> : null}
-                </button>
-
-                <button
-                  onClick={onSelectFile}
-                  role="menuitem"
-                  className="menuItem"
-                >
-                  Select subtitle file…
-                </button>
-
-                {subtitleLabel && (
-                  <div className="subtitleLabel">Current: {truncateLabel(subtitleLabel, 30)}</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={() => { if (typeof onTogglePip === 'function') onTogglePip(); }}
-          title="Toggle Picture-in-Picture"
-          className="btn small"
-        >
-          {pipActive ? 'PiP' : 'PiP'}
-        </button>
 
         <button onClick={toggleFullscreen} className="screenBtn btn" aria-label="Toggle Fullscreen">
           {fullscreen ? <FaCompress /> : <FaExpand />}

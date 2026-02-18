@@ -1,6 +1,7 @@
 :root {
   --secondary_color: #E1031F;
   --progress_grey: #404040;
+  --buffered_color: #7a7a7a;
   --preview_color: rgba(0, 0, 0, 0.5);
   background-color: black;
   font-size: 14px;
@@ -47,6 +48,11 @@
   background: black;
 }
 
+.custom-player:focus,
+.custom-player:focus-visible {
+  outline: none;
+}
+
 /* Big Button (Optional) */
 .bigBtn {
   height: 100px;
@@ -61,8 +67,8 @@
 
   position: absolute;
   bottom: 0;
-  width: 90%;
-  padding: 0 1px;
+  width: 100%;
+  padding: 0 20px;
   box-sizing: border-box;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
   color: white;
@@ -114,7 +120,9 @@ input[type="range"] {
     to right,
     var(--secondary_color) 0%,
     var(--secondary_color) var(--played-percent, 0%),
-    var(--progress_grey) var(--played-percent, 0%),
+    var(--buffered_color) var(--played-percent, 0%),
+    var(--buffered_color) var(--buffered-percent, 0%),
+    var(--progress_grey) var(--buffered-percent, 0%),
     var(--progress_grey) 100%
   );
   background-repeat: no-repeat;
@@ -362,6 +370,20 @@ input.volumeBar::-moz-range-progress {
 .videoMetaCategoryTags {
   color: var(--secondary_color);
   text-transform: capitalize;
+}
+
+.videoTagLink {
+  background: transparent;
+  border: 0;
+  color: var(--secondary_color);
+  cursor: pointer;
+  text-transform: capitalize;
+  padding: 0;
+  font: inherit;
+}
+
+.videoTagLink:hover {
+  text-decoration: underline;
 }
 
 /* ==== Next Previews ==== */

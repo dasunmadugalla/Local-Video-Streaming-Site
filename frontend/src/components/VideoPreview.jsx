@@ -4,12 +4,15 @@ import { Link } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 
 const PLACEHOLDER_QUALITY = '—'; // visible placeholder while loading
+const PREVIEW_TAG_CATEGORIES_KEY = 'previewTagCategories';
 
 const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isSelected = false }, ref) => {
   const videoRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [duration, setDuration] = useState(null); // seconds
   const [qualityLabel, setQualityLabel] = useState(PLACEHOLDER_QUALITY); // 'SD', 'HD', ... or placeholder
+  const [selectedPreviewCategories, setSelectedPreviewCategories] = useState([]);
+  const [videoTags, setVideoTags] = useState({});
   const currentClipIndex = useRef(0);
   const slotCache = useRef(null);
 
@@ -36,6 +39,53 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
     return `${Math.round(height)}p`;
   };
 
+  const loadSelectedPreviewCategories = () => {
+    try {
+      const raw = localStorage.getItem(PREVIEW_TAG_CATEGORIES_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        setSelectedPreviewCategories(parsed.slice(0, 2));
+        return;
+      }
+    } catch {
+      // ignore malformed localStorage
+    }
+    setSelectedPreviewCategories([]);
+  };
+
+  useEffect(() => {
+    loadSelectedPreviewCategories();
+
+    const onStorage = (event) => {
+      if (!event || event.key === PREVIEW_TAG_CATEGORIES_KEY) {
+        loadSelectedPreviewCategories();
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+
+    let bc;
+    try {
+      bc = new BroadcastChannel('app_updates');
+      bc.onmessage = (event) => {
+        if (event?.data?.type === 'previewTagCategoriesChanged') {
+          loadSelectedPreviewCategories();
+        }
+      };
+    } catch {
+      bc = null;
+    }
+
+    const onLocalEvent = () => loadSelectedPreviewCategories();
+    window.addEventListener('preview_tag_categories_changed', onLocalEvent);
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('preview_tag_categories_changed', onLocalEvent);
+      if (bc) bc.close();
+    };
+  }, []);
+
   // Reset component state when `file` changes so previous metadata doesn't linger
   useEffect(() => {
     try {
@@ -49,9 +99,22 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
     setIsLoaded(false);
     setDuration(null);
     setQualityLabel(PLACEHOLDER_QUALITY);
+    setVideoTags({});
     currentClipIndex.current = 0;
     slotCache.current = null;
   }, [file]);
+
+  useEffect(() => {
+    if (!encodedName) {
+      setVideoTags({});
+      return;
+    }
+
+    fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(encodedName)}`)
+      .then((res) => res.json())
+      .then((data) => setVideoTags(data?.tags || {}))
+      .catch(() => setVideoTags({}));
+  }, [encodedName]);
 
   const handleMouseEnter = () => {
     const video = videoRef.current;
@@ -110,6 +173,13 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
     setIsLoaded(true);
   };
 
+  const previewTagRows = selectedPreviewCategories
+    .map((category) => {
+      const tags = Array.isArray(videoTags[category]) ? videoTags[category] : [];
+      return tags.length > 0 ? { category, tags } : null;
+    })
+    .filter(Boolean);
+
   return (
     <div
       className={`videoBoxWrapper ${isSelected ? 'selectedPreview' : ''}`.trim()}
@@ -147,6 +217,28 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
       <p className='title'>
         {displayName}
       </p>
+
+      {previewTagRows.length > 0 && (
+        <div className="previewTagsWrap">
+          {previewTagRows.map(({ category, tags }) => (
+            <p key={category} className="previewTagLine">
+              <span className="previewTagCategory">{category}:</span>{' '}
+              {tags.map((tag, index) => (
+                <React.Fragment key={`${category}-${tag}-${index}`}>
+                  <Link
+                    to={`/tag/${encodeURIComponent(tag)}?page=1`}
+                    className="previewTagLink"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {tag}
+                  </Link>
+                  {index < tags.length - 1 ? ', ' : ''}
+                </React.Fragment>
+              ))}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
