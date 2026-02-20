@@ -8,6 +8,7 @@ import '../styling/VideoGrid.css';
 import { API_BASE } from '../utils/api';
 
 const LOAD_COUNT = 18;
+const MOBILE_PAGINATION_BREAKPOINT = 768;
 
 const normalizeToEncodedStrings = (arr) => {
   if (!Array.isArray(arr)) return [];
@@ -47,6 +48,9 @@ const FileList = ({ isHome }) => {
 
   const pageParam = parseInt(searchParams.get('page')) || 1;
   const [page, setPage] = useState(isHome ? 1 : pageParam);
+  const [isMobilePagination, setIsMobilePagination] = useState(() => (
+    typeof window !== 'undefined' && window.innerWidth <= MOBILE_PAGINATION_BREAKPOINT
+  ));
 
   const fetchPage = useCallback(async (currentPage) => {
     const offset = (currentPage - 1) * LOAD_COUNT;
@@ -309,21 +313,59 @@ const FileList = ({ isHome }) => {
     };
   }, [page, fetchPage, setShuffledCache]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_PAGINATION_BREAKPOINT}px)`);
+    const updatePaginationMode = (event) => {
+      setIsMobilePagination(event.matches);
+    };
+
+    setIsMobilePagination(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updatePaginationMode);
+      return () => mediaQuery.removeEventListener('change', updatePaginationMode);
+    }
+
+    mediaQuery.addListener(updatePaginationMode);
+    return () => mediaQuery.removeListener(updatePaginationMode);
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil((allCount || 0) / LOAD_COUNT));
 
   const getPageNumbers = () => {
     const pages = [];
-    const maxDisplay = 5;
-    let start = Math.max(page - 2, 1);
-    let end = Math.min(start + maxDisplay - 1, totalPages);
+    const maxDisplay = isMobilePagination ? 3 : 5;
 
-    if (end - start < maxDisplay - 1) start = Math.max(end - maxDisplay + 1, 1);
+    if (totalPages <= maxDisplay) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+
+    const halfWindow = Math.floor(maxDisplay / 2);
+    let start = page - halfWindow;
+    let end = page + halfWindow;
+
+    if (start < 1) {
+      start = 1;
+      end = maxDisplay;
+    }
+
+    if (end > totalPages) {
+      end = totalPages;
+      start = totalPages - maxDisplay + 1;
+    }
 
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
   };
 
   const goToPage = (newPage) => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     if (newPage === 1) navigate('/');
     else navigate(`/videos?page=${newPage}`);
   };

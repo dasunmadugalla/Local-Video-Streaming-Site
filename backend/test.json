@@ -1,0 +1,38 @@
+{
+    "genre":{
+        "action":["#001","#002","#003"],
+        "comedy":["#001","#002","#003"],
+        "romance":["#001","#002","#003"]
+    },
+    "cast":{
+        "actor1":["#001","#002","#003"],
+        "actor2":["#001","#002","#003"]
+    }
+}
+
+
+{
+    "absolute_file_path":[{
+        "id": "v0001",
+        "file":"location/file.mp4",
+        "title": "Sunset Surfing",
+        "description": "Longboard surfing at golden hour.",
+        "duration": "02:04",
+        "resolution": "FHD",
+        "thumbnail_url": "https://cdn.example.com/thumbs/vid_001.jpg",
+        "preview_url": "https://cdn.example.com/previews/vid_001_preview.mp4",
+        "tags": {
+                "genre":["comedy","action","romance"],
+                "cast":["actor1","actor2"]
+                },
+        "likes": 1234,
+        "playlists":["playlist1","playlist2"]
+  },]
+}
+
+
+
+{
+    "playlist1":["#001","#002"],
+    "playlist2":["#001","#002"]
+}

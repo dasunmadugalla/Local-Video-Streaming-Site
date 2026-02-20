@@ -76,8 +76,17 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background-position: center;
+
 }
+
+/* only for testing */
+video{
+    background-position: center;
+  background-image: url("../assets/ezgif-281ab7afb0240e1f.jpg");
+  background-position: center;
+    background-size: contain;
+}
+/* end of testing */
 
 /* === title (Below the Video) === */
 .title {

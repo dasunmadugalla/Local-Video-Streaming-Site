@@ -5,7 +5,7 @@ import VideoPlayer from './pages/VideoPlayer';
 import PageNotFount from './pages/PageNotFount';
 import { FileProvider } from './components/FileContext';
 import logo from './assets/logo.png';
-import { FaUserCircle, FaCircle,FaSearch } from 'react-icons/fa';
+import { FaUserCircle, FaCircle, FaSearch, FaBars, FaTimes } from 'react-icons/fa';
 import Settings from './pages/Settings';
 import LibraryManager from './pages/LibraryManager';
 import Access from './pages/Access';
@@ -31,6 +31,7 @@ function NavigationBar() {
   const [tagSuggestions, setTagSuggestions] = useState([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const searchContainerRef = useRef(null);
 
   useEffect(() => {
@@ -107,22 +108,36 @@ function NavigationBar() {
 
   const navLinkClass = (active) => `navLink${active ? ' active' : ''}`;
 
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [pathname]);
+
   return (
-    <div className="navigationBar">
+    <div className={`navigationBar ${isMobileNavOpen ? 'mobileNavOpen' : ''}`.trim()}>
       <div className="right">
         <Link to="/">
           <img className="logo" src={logo} alt="logo" />
         </Link>
 
-        <ul>
-          <li><Link to="/" className={navLinkClass(isHomeActive)}>Home</Link></li>
-          <li><Link to="/library" className={navLinkClass(isLibraryActive)}>Library</Link></li>
+        <button
+          type="button"
+          className="mobileNavToggle"
+          aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={isMobileNavOpen}
+          onClick={() => setIsMobileNavOpen((prev) => !prev)}
+        >
+          {isMobileNavOpen ? <FaTimes /> : <FaBars />}
+        </button>
+
+        <ul className={`navLinks ${isMobileNavOpen ? 'open' : ''}`.trim()}>
+          <li><Link to="/" className={navLinkClass(isHomeActive)} onClick={() => setIsMobileNavOpen(false)}>Home</Link></li>
+          <li><Link to="/library" className={navLinkClass(isLibraryActive)} onClick={() => setIsMobileNavOpen(false)}>Library</Link></li>
           {/* <li><Link to="/category" className={navLinkClass(isCategoryActive)}>Category</Link></li> */}
-          <li><Link to="/settings" className={navLinkClass(isSettingsActive)}>Settings</Link></li>
+          <li><Link to="/settings" className={navLinkClass(isSettingsActive)} onClick={() => setIsMobileNavOpen(false)}>Settings</Link></li>
         </ul>
       </div>
 
-      <div className="center">
+      <div className={`center ${isMobileNavOpen ? 'mobileOpen' : ''}`.trim()}>
         {/* Search form */}
         <form onSubmit={submitSearch} className='searchBar-form' ref={searchContainerRef}>
           <input

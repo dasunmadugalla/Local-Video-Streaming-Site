@@ -24,7 +24,7 @@
     "id": "fmj2xhw8f",
     "name": "720",
     "path": "X:\\Premium VIXEN ORG\\Vixen\\720",
-    "active": true,
+    "active": false,
     "count": 21,
     "totalSize": 10286720120,
     "formattedSize": "9.58 GB"
@@ -33,7 +33,7 @@
     "id": "fmj2xilo3",
     "name": "1080",
     "path": "X:\\Premium VIXEN ORG\\Vixen\\1080",
-    "active": true,
+    "active": false,
     "count": 67,
     "totalSize": 54876188826,
     "formattedSize": "51.11 GB"
@@ -42,7 +42,7 @@
     "id": "fmj2xjoxc",
     "name": "720",
     "path": "X:\\Premium VIXEN ORG\\Blacked\\720",
-    "active": true,
+    "active": false,
     "count": 56,
     "totalSize": 28346981490,
     "formattedSize": "26.40 GB"
@@ -51,7 +51,7 @@
     "id": "fmj2xjuv3",
     "name": "1080",
     "path": "X:\\Premium VIXEN ORG\\Blacked\\1080",
-    "active": true,
+    "active": false,
     "count": 109,
     "totalSize": 95614235048,
     "formattedSize": "89.05 GB"
@@ -60,7 +60,7 @@
     "id": "fmj2xkarq",
     "name": "1440",
     "path": "X:\\Premium VIXEN ORG\\Blacked\\1440",
-    "active": true,
+    "active": false,
     "count": 1,
     "totalSize": 1093991709,
     "formattedSize": "1.02 GB"
@@ -69,7 +69,7 @@
     "id": "fmj2xkg57",
     "name": "2160",
     "path": "X:\\Premium VIXEN ORG\\Blacked\\2160",
-    "active": true,
+    "active": false,
     "count": 1,
     "totalSize": 491354167,
     "formattedSize": "468.59 MB"
@@ -78,7 +78,7 @@
     "id": "fmk87t80m",
     "name": "downloaded",
     "path": "E:\\downloaded",
-    "active": true,
+    "active": false,
     "count": 12,
     "totalSize": 6647851670,
     "formattedSize": "6.19 GB"
@@ -105,7 +105,7 @@
     "id": "fmkxi44p2",
     "name": "downloadss",
     "path": "E:\\downloadss",
-    "active": true,
+    "active": false,
     "count": 48,
     "totalSize": 23843972127,
     "formattedSize": "22.21 GB"
@@ -114,7 +114,7 @@
     "id": "fmkze78wy",
     "name": "pmv",
     "path": "C:\\Users\\dasun\\Downloads\\pmv",
-    "active": true,
+    "active": false,
     "count": 13,
     "totalSize": 1226745675,
     "formattedSize": "1.14 GB"
@@ -123,7 +123,7 @@
     "id": "fmkzeaicz",
     "name": "pmv",
     "path": "F:\\pmv",
-    "active": true,
+    "active": false,
     "count": 8,
     "totalSize": 793331116,
     "formattedSize": "756.58 MB"

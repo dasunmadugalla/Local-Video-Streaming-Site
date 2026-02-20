@@ -5,6 +5,81 @@ import { API_BASE } from '../utils/api';
 
 const PLACEHOLDER_QUALITY = '—'; // visible placeholder while loading
 const PREVIEW_TAG_CATEGORIES_KEY = 'previewTagCategories';
+const TOUCH_PREVIEW_MIN_RATIO = 0.65;
+
+const touchPreviewRegistry = new Map();
+let activeTouchPreviewKey = null;
+
+const isHoverPreviewSupportedGlobally = () => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+};
+
+const syncActiveTouchPreview = () => {
+  let bestKey = null;
+  let bestRatio = 0;
+
+  touchPreviewRegistry.forEach((entry, key) => {
+    if (!entry || typeof entry.ratio !== 'number') return;
+    if (entry.ratio < TOUCH_PREVIEW_MIN_RATIO) return;
+
+    if (!bestKey || entry.ratio > bestRatio) {
+      bestKey = key;
+      bestRatio = entry.ratio;
+    }
+  });
+
+  if (bestKey === activeTouchPreviewKey) return;
+
+  if (activeTouchPreviewKey) {
+    const activeEntry = touchPreviewRegistry.get(activeTouchPreviewKey);
+    activeEntry?.stop?.();
+  }
+
+  activeTouchPreviewKey = bestKey;
+
+  if (activeTouchPreviewKey) {
+    const nextEntry = touchPreviewRegistry.get(activeTouchPreviewKey);
+    nextEntry?.start?.();
+  }
+};
+
+const registerTouchPreview = (key, handlers) => {
+  if (!key || !handlers) return;
+  touchPreviewRegistry.set(key, {
+    ...handlers,
+    ratio: 0,
+  });
+};
+
+const updateTouchPreviewRatio = (key, ratio) => {
+  const entry = touchPreviewRegistry.get(key);
+  if (!entry) return;
+
+  const nextRatio = Number.isFinite(ratio) ? ratio : 0;
+  if (entry.ratio === nextRatio) return;
+
+  entry.ratio = nextRatio;
+  syncActiveTouchPreview();
+};
+
+const unregisterTouchPreview = (key) => {
+  if (!touchPreviewRegistry.has(key)) return;
+
+  const entry = touchPreviewRegistry.get(key);
+  if (activeTouchPreviewKey === key) {
+    entry?.stop?.();
+    activeTouchPreviewKey = null;
+  }
+
+  touchPreviewRegistry.delete(key);
+  syncActiveTouchPreview();
+};
+
+const stopAllTouchPreviews = () => {
+  touchPreviewRegistry.forEach((entry) => entry?.stop?.());
+  activeTouchPreviewKey = null;
+};
 
 const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isSelected = false }, ref) => {
   const videoRef = useRef(null);
@@ -15,10 +90,48 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
   const [videoTags, setVideoTags] = useState({});
   const currentClipIndex = useRef(0);
   const slotCache = useRef(null);
+  const previewInstanceKeyRef = useRef(`preview-${Math.random().toString(36).slice(2)}`);
 
   const encodedName = file;
   const displayName = (file && file.includes('::')) ? file.split('::').slice(1).join('::') : file;
   const videoSrc = `${API_BASE}/videos/${encodeURIComponent(encodedName)}`;
+
+  const buildSlotCache = (video) => {
+    if (!video || !isFinite(video.duration) || isNaN(video.duration)) return;
+    if (slotCache.current) return;
+
+    const durationSec = video.duration;
+    const segmentLength = 1;
+    const slots = [0.02, 0.2, 0.3, 0.5, 0.7, 0.9, 0.95, 0.975, 0.99];
+    slotCache.current = slots.map(percent => {
+      const start = durationSec * percent;
+      const end = Math.min(start + segmentLength, durationSec);
+      return { start, end };
+    });
+  };
+
+  const startPreviewPlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (!isFinite(video.duration) || isNaN(video.duration)) return;
+
+    buildSlotCache(video);
+    if (!slotCache.current?.length) return;
+
+    currentClipIndex.current = 0;
+    video.currentTime = slotCache.current[0].start;
+    video.muted = true;
+    video.play().catch(() => {});
+  };
+
+  const stopPreviewPlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.pause();
+    video.currentTime = slotCache.current?.[0]?.start || 0;
+    currentClipIndex.current = 0;
+  };
 
   const formatDuration = (sec) => {
     if (!sec || isNaN(sec) || !isFinite(sec)) return '--:--';
@@ -116,35 +229,56 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
       .catch(() => setVideoTags({}));
   }, [encodedName]);
 
+  useEffect(() => {
+    if (isHoverPreviewSupportedGlobally()) return;
+
+    const target = videoRef.current;
+    if (!target || typeof IntersectionObserver === 'undefined') return;
+
+    const key = previewInstanceKeyRef.current;
+    registerTouchPreview(key, {
+      start: startPreviewPlayback,
+      stop: stopPreviewPlayback,
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
+        const ratio = entry.isIntersecting ? entry.intersectionRatio : 0;
+        updateTouchPreviewRatio(key, ratio);
+      },
+      {
+        threshold: [0, 0.25, 0.5, 0.65, 0.85, 1],
+      }
+    );
+
+    observer.observe(target);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopAllTouchPreviews();
+      } else {
+        syncActiveTouchPreview();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      unregisterTouchPreview(key);
+    };
+  }, [encodedName]);
+
   const handleMouseEnter = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (isNaN(video.duration) || !isFinite(video.duration)) return;
-
-    if (!slotCache.current) {
-      const durationSec = video.duration;
-      const segmentLength = 1;
-      const slots = [0.02, 0.2, 0.3, 0.5, 0.7, 0.9, 0.95, 0.975, 0.99];
-      slotCache.current = slots.map(percent => {
-        const start = durationSec * percent;
-        const end = Math.min(start + segmentLength, durationSec);
-        return { start, end };
-      });
-    }
-
-    currentClipIndex.current = 0;
-    video.currentTime = slotCache.current[0].start;
-    video.muted = true;
-    video.play().catch(() => {});
+    startPreviewPlayback();
   };
 
   const handleMouseLeave = () => {
-    const video = videoRef.current;
-    if (video) {
-      video.pause();
-      video.currentTime = slotCache.current?.[0]?.start || 0;
-      currentClipIndex.current = 0;
-    }
+    stopPreviewPlayback();
   };
 
   const handleTimeUpdate = () => {
@@ -199,8 +333,12 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
               className="videoElm"
               src={videoSrc}
               preload="metadata"
-              onTimeUpdate={handleTimeUpdate}
+              playsInline
+              muted
+              autoPlay={false}
               controls={false}
+              disablePictureInPicture
+              onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onLoadedData={handleLoadedData}
             />
