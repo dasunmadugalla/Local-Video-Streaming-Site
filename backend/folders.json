@@ -1,15 +1,9 @@
 [
   {
-    "id": "fmfs3pz84",
-    "name": "Downloads",
-    "path": "C:\\Users\\dasun\\Downloads",
-    "active": false
-  },
-  {
     "id": "fmfs8aicj",
     "name": "x:\\",
     "path": "x:\\",
-    "active": true
+    "active": false
   },
   {
     "id": "fmg0a4l6n",
@@ -21,24 +15,6 @@
     "formattedSize": "31.80 GB"
   },
   {
-    "id": "fmj2xhw8f",
-    "name": "720",
-    "path": "X:\\Premium VIXEN ORG\\Vixen\\720",
-    "active": false,
-    "count": 21,
-    "totalSize": 10286720120,
-    "formattedSize": "9.58 GB"
-  },
-  {
-    "id": "fmj2xilo3",
-    "name": "1080",
-    "path": "X:\\Premium VIXEN ORG\\Vixen\\1080",
-    "active": false,
-    "count": 67,
-    "totalSize": 54876188826,
-    "formattedSize": "51.11 GB"
-  },
-  {
     "id": "fmj2xjoxc",
     "name": "720",
     "path": "X:\\Premium VIXEN ORG\\Blacked\\720",
@@ -46,15 +22,6 @@
     "count": 56,
     "totalSize": 28346981490,
     "formattedSize": "26.40 GB"
-  },
-  {
-    "id": "fmj2xjuv3",
-    "name": "1080",
-    "path": "X:\\Premium VIXEN ORG\\Blacked\\1080",
-    "active": false,
-    "count": 109,
-    "totalSize": 95614235048,
-    "formattedSize": "89.05 GB"
   },
   {
     "id": "fmj2xkarq",
@@ -127,5 +94,23 @@
     "count": 8,
     "totalSize": 793331116,
     "formattedSize": "756.58 MB"
+  },
+  {
+    "id": "fmm4wf88c",
+    "name": "1080",
+    "path": "X:\\Premium VIXEN ORG\\Blacked\\1080",
+    "active": false
+  },
+  {
+    "id": "fmm4wft0m",
+    "name": "1080",
+    "path": "X:\\Premium VIXEN ORG\\Vixen\\1080",
+    "active": true
+  },
+  {
+    "id": "fmm4wft0m",
+    "name": "1080",
+    "path": "X:\\Premium VIXEN ORG\\Blacked\\1080",
+    "active": true
   }
 ]

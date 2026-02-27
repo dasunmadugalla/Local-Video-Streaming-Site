@@ -42,6 +42,8 @@ const FileList = ({ isHome }) => {
   const [isBulkTagEdit, setIsBulkTagEdit] = useState(false);
   const [selectedVideoDetails, setSelectedVideoDetails] = useState({});
   const [bulkInitialCommonTags, setBulkInitialCommonTags] = useState({});
+  const [thumbnailInput, setThumbnailInput] = useState('');
+  const [showThumbnailInput, setShowThumbnailInput] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -122,15 +124,21 @@ const FileList = ({ isHome }) => {
   const openTitleModal = useCallback((fileName) => {
     setSelectedFile(fileName);
     setTitleInput('');
+    setThumbnailInput('');
+    setShowThumbnailInput(false);
     setIsBulkTagEdit(false);
     const initialTags = {};
 
-    fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`)
-      .then(res => res.json())
-      .then(data => {
-        setTitleInput(data.title || '');
+    Promise.all([
+      fetch(`${API_BASE}/api/videoDetails?fileName=${encodeURIComponent(fileName)}`).then((res) => res.json()),
+      fetch(`${API_BASE}/api/video-manifest?fileName=${encodeURIComponent(fileName)}`).then((res) => res.ok ? res.json() : {})
+    ])
+      .then(([details, manifest]) => {
+        setTitleInput(details.title || '');
+        setThumbnailInput(typeof manifest?.thumbnailPath === 'string' ? manifest.thumbnailPath : '');
+        setShowThumbnailInput(manifest?.sourceType === 'json');
         Object.keys(tagCategories).forEach(cat => {
-          initialTags[cat] = (data.tags && data.tags[cat]) ? data.tags[cat] : [];
+          initialTags[cat] = (details.tags && details.tags[cat]) ? details.tags[cat] : [];
         });
         setTagInputs(initialTags);
         setShowTitleModal(true);
@@ -179,6 +187,8 @@ const FileList = ({ isHome }) => {
       setBulkInitialCommonTags(commonTags);
       setTagInputs(commonTags);
       setTitleInput('');
+      setThumbnailInput('');
+      setShowThumbnailInput(false);
       setIsBulkTagEdit(true);
       setShowTitleModal(true);
     } catch (err) {
@@ -195,28 +205,33 @@ const FileList = ({ isHome }) => {
     return tags;
   };
 
-  const handleSingleVideoSave = () => {
+  const handleSingleVideoSave = async () => {
     const tags = buildTagPayloadFromInputs();
 
-    fetch(`${API_BASE}/api/updateVideo`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName: selectedFile, title: titleInput.trim(), tags })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setPopup({ message: 'Video updated successfully', type: 'success' });
-        } else {
-          setPopup({ message: 'Failed to update video', type: 'error' });
-        }
-        setShowTitleModal(false);
-      })
-      .catch(err => {
-        console.error('Error:', err);
-        setPopup({ message: 'Failed to update video', type: 'error' });
-        setShowTitleModal(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/updateVideo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: selectedFile, title: titleInput.trim(), tags })
       });
+      const data = await res.json();
+      if (!data.success) throw new Error('Failed to update video');
+
+      if (showThumbnailInput) {
+        await fetch(`${API_BASE}/api/video-manifest-thumbnail`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName: selectedFile, thumbnailPath: thumbnailInput || '' })
+        });
+      }
+
+      setPopup({ message: 'Video updated successfully', type: 'success' });
+      setShowTitleModal(false);
+    } catch (err) {
+      console.error('Error:', err);
+      setPopup({ message: 'Failed to update video', type: 'error' });
+      setShowTitleModal(false);
+    }
   };
 
   const handleBulkTagSave = async () => {
@@ -501,6 +516,9 @@ const FileList = ({ isHome }) => {
             onClose={() => setShowTitleModal(false)}
             showTitle={!isBulkTagEdit}
             modalTitle={isBulkTagEdit ? `Edit Common Genres (${selectedFiles.length} selected)` : ''}
+            showThumbnail={!isBulkTagEdit && showThumbnailInput}
+            thumbnailInput={thumbnailInput}
+            setThumbnailInput={setThumbnailInput}
           />
         )}
 

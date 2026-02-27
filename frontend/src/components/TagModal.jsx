@@ -12,7 +12,10 @@ const TagModal = ({
   onSave,
   onClose,
   showTitle = true,
-  modalTitle = ''
+  modalTitle = '',
+  showThumbnail = false,
+  thumbnailInput = '',
+  setThumbnailInput = () => {}
 }) => {
   const [activeCategory, setActiveCategory] = useState(null);
 
@@ -59,6 +62,19 @@ const TagModal = ({
           placeholder="Enter Video Title"
           value={titleInput}
           onChange={e => setTitleInput(e.target.value)}
+        />
+      </>
+    )}
+
+
+    {showThumbnail && (
+      <>
+        <label>Thumbnail:</label>
+        <input
+          type="text"
+          placeholder="Enter thumbnail path"
+          value={thumbnailInput}
+          onChange={e => setThumbnailInput(e.target.value)}
         />
       </>
     )}

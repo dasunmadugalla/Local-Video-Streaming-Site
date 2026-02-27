@@ -81,6 +81,31 @@ const stopAllTouchPreviews = () => {
   activeTouchPreviewKey = null;
 };
 
+const parseDurationString = (value) => {
+  if (!value) return null;
+  const parts = String(value).split(':').map((piece) => parseInt(piece, 10));
+  if (!parts.length || !parts.every((num) => Number.isFinite(num))) return null;
+
+  if (parts.length === 3) {
+    return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+  }
+
+  if (parts.length === 2) {
+    return (parts[0] * 60) + parts[1];
+  }
+
+  return parts[0] || null;
+};
+
+const resolutionFromDimensions = (width, height) => {
+  const maxSide = Math.max(Number(width) || 0, Number(height) || 0);
+  if (!maxSide) return PLACEHOLDER_QUALITY;
+  if (maxSide >= 3840) return 'UHD';
+  if (maxSide >= 1920) return 'FHD';
+  if (maxSide >= 1280) return 'HD';
+  return 'SD';
+};
+
 const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isSelected = false }, ref) => {
   const videoRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -88,13 +113,21 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
   const [qualityLabel, setQualityLabel] = useState(PLACEHOLDER_QUALITY); // 'SD', 'HD', ... or placeholder
   const [selectedPreviewCategories, setSelectedPreviewCategories] = useState([]);
   const [videoTags, setVideoTags] = useState({});
+  const [displayTitle, setDisplayTitle] = useState('');
+  const [previewSrc, setPreviewSrc] = useState('');
+  const [thumbnailSrc, setThumbnailSrc] = useState('');
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [hasManifestDuration, setHasManifestDuration] = useState(false);
+  const [hasManifestResolution, setHasManifestResolution] = useState(false);
+  const [sourceType, setSourceType] = useState('folder');
   const currentClipIndex = useRef(0);
   const slotCache = useRef(null);
   const previewInstanceKeyRef = useRef(`preview-${Math.random().toString(36).slice(2)}`);
 
   const encodedName = file;
   const displayName = (file && file.includes('::')) ? file.split('::').slice(1).join('::') : file;
-  const videoSrc = `${API_BASE}/videos/${encodeURIComponent(encodedName)}`;
+  const fallbackVideoSrc = `${API_BASE}/videos/${encodeURIComponent(encodedName)}`;
+  const previewEndpointSrc = `${API_BASE}/previews/${encodeURIComponent(encodedName)}`;
 
   const buildSlotCache = (video) => {
     if (!video || !isFinite(video.duration) || isNaN(video.duration)) return;
@@ -121,7 +154,7 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
     currentClipIndex.current = 0;
     video.currentTime = slotCache.current[0].start;
     video.muted = true;
-    video.play().catch(() => {});
+    video.play().then(() => setIsPreviewPlaying(true)).catch(() => {});
   };
 
   const stopPreviewPlayback = () => {
@@ -129,6 +162,7 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
     if (!video) return;
 
     video.pause();
+    setIsPreviewPlaying(false);
     video.currentTime = slotCache.current?.[0]?.start || 0;
     currentClipIndex.current = 0;
   };
@@ -143,14 +177,6 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const mapHeightToLabel = (height) => {
-    if (!height || isNaN(height)) return PLACEHOLDER_QUALITY;
-    if (height <= 480) return 'SD';
-    if (height <= 720) return 'HD';
-    if (height <= 1080) return 'FHD';
-    if (height <= 2160) return '4K';
-    return `${Math.round(height)}p`;
-  };
 
   const loadSelectedPreviewCategories = () => {
     try {
@@ -213,9 +239,82 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
     setDuration(null);
     setQualityLabel(PLACEHOLDER_QUALITY);
     setVideoTags({});
+    setDisplayTitle(displayName || '');
+    setPreviewSrc(fallbackVideoSrc);
+    setThumbnailSrc('');
+    setIsPreviewPlaying(false);
+    setHasManifestDuration(false);
+    setHasManifestResolution(false);
+    setSourceType('folder');
     currentClipIndex.current = 0;
     slotCache.current = null;
-  }, [file]);
+  }, [file, displayName, fallbackVideoSrc]);
+
+  useEffect(() => {
+    if (!encodedName) return;
+
+    fetch(`${API_BASE}/api/video-manifest?fileName=${encodeURIComponent(encodedName)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load video manifest');
+        return res.json();
+      })
+      .then((data) => {
+        const nextSourceType = data?.sourceType === 'json' ? 'json' : 'folder';
+        setSourceType(nextSourceType);
+
+        if (data.title) {
+          setDisplayTitle(data.title);
+        }
+
+        if (nextSourceType === 'json') {
+          const parsedDuration = parseDurationString(data.duration);
+          if (parsedDuration) {
+            setDuration(parsedDuration);
+            setHasManifestDuration(true);
+          } else {
+            setDuration(null);
+            setHasManifestDuration(false);
+          }
+
+          if (data.resolution) {
+            setQualityLabel(data.resolution);
+            setHasManifestResolution(true);
+          } else {
+            setQualityLabel(PLACEHOLDER_QUALITY);
+            setHasManifestResolution(false);
+          }
+
+          if (data.hasThumbnail) {
+            setThumbnailSrc(`${API_BASE}/thumbnails/${encodeURIComponent(encodedName)}`);
+          } else {
+            setThumbnailSrc('');
+          }
+
+          if (data.hasPreview) {
+            setPreviewSrc(previewEndpointSrc);
+          } else {
+            setPreviewSrc('');
+          }
+          return;
+        }
+
+        // File-system folders use original behavior from the actual video file.
+        setHasManifestDuration(false);
+        setHasManifestResolution(false);
+        setDuration(null);
+        setQualityLabel(PLACEHOLDER_QUALITY);
+        setThumbnailSrc('');
+        setPreviewSrc(fallbackVideoSrc);
+      })
+      .catch(() => {
+        setSourceType('folder');
+        setDisplayTitle(displayName || '');
+        setHasManifestDuration(false);
+        setHasManifestResolution(false);
+        setThumbnailSrc('');
+        setPreviewSrc(fallbackVideoSrc);
+      });
+  }, [encodedName, displayName, fallbackVideoSrc, previewEndpointSrc]);
 
   useEffect(() => {
     if (!encodedName) {
@@ -294,11 +393,14 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
     if (!video) return;
-    const dur = isNaN(video.duration) ? null : video.duration;
-    setDuration(dur);
 
-    const vh = video.videoHeight || null;
-    setQualityLabel(mapHeightToLabel(vh));
+    if (!hasManifestDuration && sourceType !== 'json') {
+      setDuration(video.duration);
+    }
+
+    if (!hasManifestResolution && sourceType !== 'json') {
+      setQualityLabel(resolutionFromDimensions(video.videoWidth, video.videoHeight));
+    }
 
     setIsLoaded(true);
   };
@@ -331,7 +433,8 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
             <video
               ref={videoRef}
               className="videoElm"
-              src={videoSrc}
+              src={previewSrc || fallbackVideoSrc}
+              poster={thumbnailSrc || undefined}
               preload="metadata"
               playsInline
               muted
@@ -341,7 +444,22 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onLoadedData={handleLoadedData}
+              onPlay={() => setIsPreviewPlaying(true)}
+              onPause={() => setIsPreviewPlaying(false)}
+              onError={() => {
+                if (sourceType !== 'json') {
+                  setPreviewSrc(fallbackVideoSrc);
+                }
+              }}
             />
+            {thumbnailSrc && !isPreviewPlaying && (
+              <img
+                src={thumbnailSrc}
+                alt=""
+                aria-hidden="true"
+                className="videoThumbnailOverlay"
+              />
+            )}
             <div className="videoQualityOverlay" aria-hidden="true">
               <span className="videoQuality">{qualityLabel}</span>
             </div>
@@ -353,7 +471,7 @@ const VideoPreview = React.forwardRef(({ file, onContextMenu, onSelectClick, isS
         </Link>
       </div>
       <p className='title'>
-        {displayName}
+        {displayTitle || displayName}
       </p>
 
       {previewTagRows.length > 0 && (

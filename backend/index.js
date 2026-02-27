@@ -18,6 +18,7 @@ app.use(express.json());
 // default initial folder (will be added to folders.json on first run if missing)
 const DEFAULT_VIDEO_DIR = "X:\\";
 const FOLDERS_DB = path.join(__dirname, 'folders.json');
+const IMPORTED_CATALOG_DB = path.join(__dirname, 'importedCatalog.json');
 
 const VIDEO_EXTS = ['.mp4', '.mkv', '.mov', '.avi'];
 const PRIMARY_DB_PATH = path.join(__dirname, 'primaryDb', 'db.json');
@@ -48,6 +49,35 @@ function writeFoldersFile(data) {
   fs.writeFileSync(FOLDERS_DB, JSON.stringify(data, null, 2), 'utf8');
 }
 
+function readImportedCatalogFile() {
+  try {
+    if (!fs.existsSync(IMPORTED_CATALOG_DB)) {
+      const initial = { byFolderId: {} };
+      fs.writeFileSync(IMPORTED_CATALOG_DB, JSON.stringify(initial, null, 2), 'utf8');
+      return initial;
+    }
+
+    const raw = fs.readFileSync(IMPORTED_CATALOG_DB, 'utf8');
+    const parsed = JSON.parse(raw || '{}');
+    if (!parsed || typeof parsed !== 'object') {
+      return { byFolderId: {} };
+    }
+
+    if (!parsed.byFolderId || typeof parsed.byFolderId !== 'object') {
+      parsed.byFolderId = {};
+    }
+
+    return parsed;
+  } catch (err) {
+    console.error('Failed to read importedCatalog.json', err);
+    return { byFolderId: {} };
+  }
+}
+
+function writeImportedCatalogFile(data) {
+  fs.writeFileSync(IMPORTED_CATALOG_DB, JSON.stringify(data, null, 2), 'utf8');
+}
+
 function generateFolderId() {
   return 'f' + Date.now().toString(36);
 }
@@ -71,6 +101,39 @@ function listFilesInFolder(folderPath) {
     console.warn(`Failed to read folder ${folderPath}:`, err.message);
     return [];
   }
+}
+
+function normalizeCatalogVideoEntry(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (!raw.file || typeof raw.file !== 'string') return null;
+
+  return {
+    id: raw.id || '',
+    file: raw.file,
+    title: raw.title || '',
+    description: raw.description || '',
+    duration: raw.duration || '',
+    resolution: raw.resolution || '',
+    thumbnail_path: raw.thumbnail_path || '',
+    preview_path: raw.preview_path || '',
+    tags: raw.tags && typeof raw.tags === 'object' ? raw.tags : {},
+    likes: Number.isFinite(raw.likes) ? raw.likes : 0,
+    playlists: Array.isArray(raw.playlists) ? raw.playlists : []
+  };
+}
+
+function resolvePotentialPath(folderPath, rawPath) {
+  if (!rawPath || typeof rawPath !== 'string') return null;
+  if (path.isAbsolute(rawPath)) return rawPath;
+  return path.join(folderPath, rawPath);
+}
+
+function getCatalogVideosForFolder(folderId) {
+  const catalog = readImportedCatalogFile();
+  const list = catalog.byFolderId && Array.isArray(catalog.byFolderId[folderId])
+    ? catalog.byFolderId[folderId]
+    : [];
+  return list.map(normalizeCatalogVideoEntry).filter(Boolean);
 }
 
 function computeFolderStats(folderPath) {
@@ -106,8 +169,25 @@ function getAllFilesFromActiveFolders() {
   const active = getActiveFolders();
   const list = [];
   active.forEach(folder => {
+    const catalogVideos = getCatalogVideosForFolder(folder.id);
+
+    if (catalogVideos.length > 0) {
+      catalogVideos.forEach((video) => {
+        const fileName = video.file;
+        list.push({
+          encodedName: `${folder.id}::${fileName}`,
+          fileName,
+          folderId: folder.id,
+          folderPath: folder.path,
+          fullPath: path.join(folder.path, fileName),
+          importedMeta: video
+        });
+      });
+      return;
+    }
+
     const files = listFilesInFolder(folder.path);
-    files.forEach(f => {
+    files.forEach((f) => {
       list.push({
         encodedName: `${folder.id}::${f}`,
         fileName: f,
@@ -129,9 +209,17 @@ function findFileByEncoded(encoded) {
   const folders = readFoldersFile();
   const folder = folders.find(f => f.id === folderId);
   if (!folder) return null;
+
+  const catalogVideos = getCatalogVideosForFolder(folderId);
+  const importedMeta = catalogVideos.find(v => v.file === fileName) || null;
+
   const fullPath = path.join(folder.path, fileName);
   if (!fs.existsSync(fullPath)) return null;
-  return { folder, fileName, fullPath };
+
+  const previewPath = resolvePotentialPath(folder.path, importedMeta && importedMeta.preview_path);
+  const thumbnailPath = resolvePotentialPath(folder.path, importedMeta && importedMeta.thumbnail_path);
+
+  return { folder, fileName, fullPath, importedMeta, previewPath, thumbnailPath };
 }
 
 function readPrimaryDB() {
@@ -214,8 +302,21 @@ app.use('/api', createPrimaryDBHandler(resolveFilePath));
 
 app.get('/api/folders', (req, res) => {
   const data = readFoldersFile();
+  const catalog = readImportedCatalogFile();
+
   const enriched = data.map(f => {
     let count = 0, totalSize = 0, formattedSize = '0 B';
+
+    const importedList = catalog.byFolderId && Array.isArray(catalog.byFolderId[f.id])
+      ? catalog.byFolderId[f.id]
+      : [];
+
+    if (importedList.length > 0) {
+      count = importedList.length;
+      formattedSize = '-';
+      return { ...f, count, totalSize, formattedSize, sourceType: 'json' };
+    }
+
     try {
       if (fs.existsSync(f.path)) {
         const stats = computeFolderStats(f.path);
@@ -226,7 +327,7 @@ app.get('/api/folders', (req, res) => {
     } catch (e) {
       // ignore
     }
-    return { ...f, count, totalSize, formattedSize };
+    return { ...f, count, totalSize, formattedSize, sourceType: 'folder' };
   });
   res.json(enriched);
 });
@@ -258,6 +359,21 @@ function sanitizeIncomingPath(rawPath) {
   return p;
 }
 
+
+function hasImportedCatalogForFolder(catalog, folderId) {
+  return !!(catalog && catalog.byFolderId && Array.isArray(catalog.byFolderId[folderId]) && catalog.byFolderId[folderId].length > 0);
+}
+
+function findFolderByPathAndSection(folders, catalog, folderPath, section) {
+  return (folders || []).find((folder) => {
+    if (!folder || !folder.path) return false;
+    if (path.resolve(folder.path) !== path.resolve(folderPath)) return false;
+
+    const isJsonFolder = hasImportedCatalogForFolder(catalog, folder.id);
+    return section === 'json' ? isJsonFolder : !isJsonFolder;
+  }) || null;
+}
+
 app.post('/api/folders', (req, res) => {
   const folderPathRaw = req.body.path || req.body.folderPath || '';
   const folderPath = sanitizeIncomingPath(folderPathRaw);
@@ -269,9 +385,11 @@ app.post('/api/folders', (req, res) => {
   if (!fs.statSync(folderPath).isDirectory()) return res.status(400).json({ error: 'Path is not a directory' });
 
   let all = readFoldersFile();
-  // avoid duplicates by normalized absolute path
-  if (all.some(f => path.resolve(f.path) === path.resolve(folderPath))) {
-    return res.status(400).json({ error: 'Folder already added' });
+  const catalog = readImportedCatalogFile();
+
+  // avoid duplicates only inside FS section (non-JSON folders)
+  if (findFolderByPathAndSection(all, catalog, folderPath, 'fs')) {
+    return res.status(400).json({ error: 'Folder already added to File System folders' });
   }
 
   const stats = computeFolderStats(folderPath);
@@ -289,6 +407,58 @@ app.post('/api/folders', (req, res) => {
   all.push(newFolder);
   writeFoldersFile(all);
   res.json({ success: true, folder: newFolder });
+});
+
+app.post('/api/folders/import-json', (req, res) => {
+  const payload = req.body && req.body.data;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return res.status(400).json({ error: 'Invalid JSON payload' });
+  }
+
+  const allFolders = readFoldersFile();
+  const catalog = readImportedCatalogFile();
+  const addedFolders = [];
+  const updatedFolders = [];
+  let totalVideos = 0;
+
+  Object.entries(payload).forEach(([rawFolderPath, rawVideos]) => {
+    const folderPath = sanitizeIncomingPath(rawFolderPath);
+    if (!folderPath || !Array.isArray(rawVideos)) return;
+
+    const normalizedVideos = rawVideos
+      .map(normalizeCatalogVideoEntry)
+      .filter(Boolean);
+
+    if (normalizedVideos.length === 0) return;
+
+    let folder = findFolderByPathAndSection(allFolders, catalog, folderPath, 'json');
+
+    if (!folder) {
+      folder = {
+        id: generateFolderId(),
+        name: path.basename(folderPath) || folderPath,
+        path: folderPath,
+        active: true
+      };
+      allFolders.push(folder);
+      addedFolders.push(folder.path);
+    } else {
+      updatedFolders.push(folder.path);
+    }
+
+    catalog.byFolderId[folder.id] = normalizedVideos;
+    totalVideos += normalizedVideos.length;
+  });
+
+  writeFoldersFile(allFolders);
+  writeImportedCatalogFile(catalog);
+
+  res.json({
+    success: true,
+    addedFolders,
+    updatedFolders,
+    totalVideos
+  });
 });
 
 // PUT update folders - accept body { folders: [{ id, active }] } OR { activeIds: [...] }
@@ -319,6 +489,13 @@ app.delete('/api/folders/:id', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'Folder not found' });
   all.splice(idx, 1);
   writeFoldersFile(all);
+
+  const catalog = readImportedCatalogFile();
+  if (catalog.byFolderId && catalog.byFolderId[id]) {
+    delete catalog.byFolderId[id];
+    writeImportedCatalogFile(catalog);
+  }
+
   res.json({ success: true });
 });
 
@@ -462,19 +639,16 @@ app.get('/tag/:tagName', (req, res) => {
 
 /* ---------- Video streaming endpoint (supports Range) ---------- */
 
-app.get('/videos/:encoded', (req, res) => {
-  const encoded = decodeURIComponent(req.params.encoded || '');
-  const info = findFileByEncoded(encoded);
-  if (!info) {
+function streamVideoWithRange(req, res, filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
     return res.status(404).send('File not found');
   }
 
-  const fullPath = info.fullPath;
-  const stat = fs.statSync(fullPath);
+  const stat = fs.statSync(filePath);
   const total = stat.size;
   const range = req.headers.range;
 
-  const ext = path.extname(fullPath).toLowerCase();
+  const ext = path.extname(filePath).toLowerCase();
   let contentType = 'application/octet-stream';
   if (ext === '.mp4') contentType = 'video/mp4';
   else if (ext === '.mkv') contentType = 'video/x-matroska';
@@ -487,8 +661,7 @@ app.get('/videos/:encoded', (req, res) => {
       'Content-Type': contentType,
       'Accept-Ranges': 'bytes'
     });
-    fs.createReadStream(fullPath).pipe(res);
-    return;
+    return fs.createReadStream(filePath).pipe(res);
   }
 
   const parts = range.replace(/bytes=/, '').split('-');
@@ -501,7 +674,7 @@ app.get('/videos/:encoded', (req, res) => {
   }
 
   const chunkSize = (end - start) + 1;
-  const stream = fs.createReadStream(fullPath, { start, end });
+  const stream = fs.createReadStream(filePath, { start, end });
 
   res.writeHead(206, {
     'Content-Range': `bytes ${start}-${end}/${total}`,
@@ -511,6 +684,107 @@ app.get('/videos/:encoded', (req, res) => {
   });
 
   stream.pipe(res);
+}
+
+app.get('/videos/:encoded', (req, res) => {
+  const encoded = decodeURIComponent(req.params.encoded || '');
+  const info = findFileByEncoded(encoded);
+  if (!info) {
+    return res.status(404).send('File not found');
+  }
+
+  return streamVideoWithRange(req, res, info.fullPath);
+});
+
+app.get('/previews/:encoded', (req, res) => {
+  const encoded = decodeURIComponent(req.params.encoded || '');
+  const info = findFileByEncoded(encoded);
+  if (!info) return res.status(404).send('File not found');
+
+  let candidatePath = null;
+  if (info.importedMeta) {
+    candidatePath = info.previewPath && fs.existsSync(info.previewPath) ? info.previewPath : null;
+  } else {
+    candidatePath = info.fullPath;
+  }
+
+  if (!candidatePath || !fs.existsSync(candidatePath)) {
+    return res.status(404).send('Preview not found');
+  }
+
+  return streamVideoWithRange(req, res, candidatePath);
+});
+
+app.get('/thumbnails/:encoded', (req, res) => {
+  const encoded = decodeURIComponent(req.params.encoded || '');
+  const info = findFileByEncoded(encoded);
+  if (!info) return res.status(404).send('File not found');
+  if (!info.thumbnailPath || !fs.existsSync(info.thumbnailPath)) {
+    return res.status(404).send('Thumbnail not found');
+  }
+
+  res.sendFile(info.thumbnailPath);
+});
+
+
+app.post('/api/video-manifest-thumbnail', (req, res) => {
+  const { fileName, thumbnailPath } = req.body || {};
+  if (!fileName) return res.status(400).json({ error: 'Missing fileName' });
+
+  const encoded = decodeURIComponent(fileName || '');
+  const parts = encoded.split('::');
+  if (parts.length < 2) return res.status(400).json({ error: 'Invalid fileName' });
+
+  const folderId = parts[0];
+  const rawFileName = parts.slice(1).join('::');
+
+  const catalog = readImportedCatalogFile();
+  const folderEntries = catalog.byFolderId && Array.isArray(catalog.byFolderId[folderId])
+    ? catalog.byFolderId[folderId]
+    : null;
+
+  if (!folderEntries) {
+    return res.status(400).json({ error: 'Video is not from imported JSON catalog' });
+  }
+
+  const index = folderEntries.findIndex((item) => item && item.file === rawFileName);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Video not found in imported JSON catalog' });
+  }
+
+  folderEntries[index] = {
+    ...folderEntries[index],
+    thumbnail_path: typeof thumbnailPath === 'string' ? thumbnailPath.trim() : ''
+  };
+
+  catalog.byFolderId[folderId] = folderEntries;
+  writeImportedCatalogFile(catalog);
+
+  return res.json({ success: true });
+});
+
+app.get('/api/video-manifest', (req, res) => {
+  const encoded = req.query.fileName || req.query.encodedName || '';
+  if (!encoded) return res.status(400).json({ error: 'Missing fileName' });
+
+  const info = findFileByEncoded(encoded);
+  if (!info) return res.status(404).json({ error: 'File not found' });
+
+  const meta = info.importedMeta || {};
+  const title = typeof meta.title === 'string' && meta.title.trim()
+    ? meta.title.trim()
+    : info.fileName;
+
+  res.json({
+    title,
+    description: meta.description || '',
+    duration: meta.duration || '',
+    resolution: meta.resolution || '',
+    thumbnailPath: meta.thumbnail_path || '',
+    sourceType: info.importedMeta ? 'json' : 'folder',
+    hasThumbnail: !!(info.thumbnailPath && fs.existsSync(info.thumbnailPath)),
+    hasPreview: !!(info.previewPath && fs.existsSync(info.previewPath))
+  });
 });
 
 app.listen(port, '0.0.0.0', () => {

@@ -43,6 +43,18 @@
   min-width: 90px;
 }
 
+.settings-json-upload {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-json-label {
+  font-size: 13px;
+  color: var(--progress_grey);
+}
+
 /* message */
 .settings-message {
   margin-top: 8px;
@@ -82,6 +94,23 @@
 
 .settings-category-option.disabled {
   opacity: 0.45;
+}
+
+
+.source-mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.source-mode-btn {
+  opacity: 0.75;
+}
+
+.source-mode-btn.active {
+  opacity: 1;
+  border: 1px solid rgba(225,16,31,0.55);
+  color: var(--secondary_color);
 }
 
 /* folders panel */

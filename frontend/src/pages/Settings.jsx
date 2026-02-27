@@ -16,6 +16,8 @@ function Settings() {
   const [message, setMessage] = useState('');
   const [tagCategories, setTagCategories] = useState({});
   const [selectedPreviewCategories, setSelectedPreviewCategories] = useState([]);
+  const [jsonFileName, setJsonFileName] = useState('');
+  const [sourceMode, setSourceMode] = useState('fs');
 
   // get context setter so we can clear the shuffled cache after changes
   const { setShuffledCache } = useContext(FileContext);
@@ -25,7 +27,12 @@ function Settings() {
     fetch(`${API_BASE}/api/folders`)
       .then(res => res.json())
       .then(data => {
-        setFolders(data || []);
+        const nextFolders = data || [];
+        setFolders(nextFolders);
+
+        const hasActiveJson = nextFolders.some((folder) => folder.active && folder.sourceType === 'json');
+        setSourceMode(hasActiveJson ? 'json' : 'fs');
+
         setLoading(false);
       })
       .catch(err => {
@@ -129,6 +136,50 @@ function Settings() {
     }
   };
 
+  const handleJsonUpload = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    setJsonFileName(file.name);
+    setSaving(true);
+    setMessage('');
+
+    try {
+      const raw = await file.text();
+      const parsed = JSON.parse(raw);
+
+      const res = await fetch(`${API_BASE}/api/folders/import-json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: parsed })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'JSON import failed');
+
+      try { setShuffledCache([]); } catch { /* ignore */ }
+
+      try {
+        const bc = new BroadcastChannel('app_updates');
+        bc.postMessage({ type: 'foldersChanged' });
+        bc.close();
+      } catch {
+        // ignore
+      }
+
+      window.dispatchEvent(new CustomEvent('app_folders_changed'));
+
+      setMessage(`Imported JSON catalog (${data.totalVideos || 0} videos).`);
+      fetchFolders();
+    } catch (err) {
+      console.error(err);
+      setMessage(err.message || 'Failed to upload JSON file.');
+    } finally {
+      setSaving(false);
+      event.target.value = '';
+    }
+  };
+
   const deleteFolder = (id) => {
     if (!window.confirm('Remove this folder from the list?')) return;
     fetch(`${API_BASE}/api/folders/${id}`, { method: 'DELETE' })
@@ -146,7 +197,15 @@ function Settings() {
 
   const saveActive = () => {
     setSaving(true);
-    const activeIds = folders.filter(f => f.active).map(f => f.id);
+
+    const activeIds = folders
+      .filter((folder) => {
+        if (!folder.active) return false;
+        if (sourceMode === 'json') return folder.sourceType === 'json';
+        return folder.sourceType !== 'json';
+      })
+      .map((folder) => folder.id);
+
     fetch(`${API_BASE}/api/folders`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -187,6 +246,13 @@ function Settings() {
   };
 
   const categoryNames = Object.keys(tagCategories || {});
+  const fsFolders = folders.filter((folder) => folder.sourceType !== 'json');
+  const jsonFolders = folders.filter((folder) => folder.sourceType === 'json');
+  const visibleFolders = sourceMode === 'json' ? jsonFolders : fsFolders;
+
+  const switchSourceMode = (mode) => {
+    setSourceMode(mode);
+  };
 
   return (
     <div className="mainContainer settings-container">
@@ -201,26 +267,6 @@ function Settings() {
         </p>
       </div>
 
-      <div className="settings-input-area">
-        <div className="settings-input-row">
-          <input
-            type="text"
-            value={newPath}
-            onChange={(e) => setNewPath(e.target.value)}
-            placeholder="Enter full folder path (e.g. C:\Videos\Movies)"
-            className="settings-input"
-          />
-          <button
-            className="btn classic settings-add-btn"
-            onClick={() => addFolder()}
-            disabled={saving}
-          >
-            {saving ? 'Adding...' : 'Add'}
-          </button>
-        </div>
-
-        {message && <div className="settings-message">{message}</div>}
-      </div>
 
       <div className="settings-preview-tags-panel">
         <h3>Video Preview Tag Display</h3>
@@ -253,15 +299,73 @@ function Settings() {
       </div>
 
       <div className="folders-panel">
+        <div className="source-mode-toggle" role="tablist" aria-label="Folder source mode">
+          <button
+            type="button"
+            className={`btn classic source-mode-btn ${sourceMode === 'fs' ? 'active' : ''}`.trim()}
+            onClick={() => switchSourceMode('fs')}
+          >
+            File System Folders
+          </button>
+          <button
+            type="button"
+            className={`btn classic source-mode-btn ${sourceMode === 'json' ? 'active' : ''}`.trim()}
+            onClick={() => switchSourceMode('json')}
+          >
+            JSON Catalog Folders
+          </button>
+        </div>
+
+        {sourceMode === 'fs' ? (
+          <div className="settings-input-area">
+            <div className="settings-input-row">
+              <input
+                type="text"
+                value={newPath}
+                onChange={(e) => setNewPath(e.target.value)}
+                placeholder="Enter full folder path (e.g. C:\Videos\Movies)"
+                className="settings-input"
+              />
+              <button
+                className="btn classic settings-add-btn"
+                onClick={() => addFolder()}
+                disabled={saving}
+              >
+                {saving ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="settings-input-area settings-json-panel-only">
+            <div className="settings-json-upload">
+              <label className="settings-json-label" htmlFor="catalog-json-upload">
+                Upload JSON catalog
+              </label>
+              <input
+                id="catalog-json-upload"
+                type="file"
+                accept="application/json,.json"
+                onChange={handleJsonUpload}
+                disabled={saving}
+              />
+              {jsonFileName && <div className="settings-tip">Last file: {jsonFileName}</div>}
+            </div>
+          </div>
+        )}
+
+        {message && <div className="settings-message">{message}</div>}
+
         {loading ? (
           <div className="loading-text">Loading folders...</div>
         ) : (
           <>
-            {folders.length === 0 ? (
-              <div className="no-folders">No folders configured.</div>
+            {visibleFolders.length === 0 ? (
+              <div className="no-folders">
+                {sourceMode === 'json' ? 'No JSON catalog folders uploaded.' : 'No file-system folders configured.'}
+              </div>
             ) : (
               <div className="folders-list">
-                {folders.map(f => {
+                {visibleFolders.map(f => {
                   const rowClass = f.active ? 'folder-row active' : 'folder-row';
                   return (
                     <div
@@ -276,6 +380,7 @@ function Settings() {
                       <div className="folder-main">
                         <div className="folder-name">{f.name}</div>
                         <div className="folder-path">{f.path}</div>
+                        {f.sourceType === 'json' && <div className="folder-path">Source: JSON catalog</div>}
                       </div>
 
                       <div className="folder-meta">
